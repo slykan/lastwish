@@ -1,0 +1,36 @@
+name: lastwish
+description: "LastWish mobile app"
+publish_to: 'none'
+
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.11.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  http: ^1.2.0
+  shared_preferences: ^2.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_native_splash: ^2.4.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/logo.png
+    - assets/bg.webp
+
+flutter_native_splash:
+  color: "#0f172a"
+  image: assets/logo.png
+  android: true
+  ios: true
+
+  sleek_circular_slider: ^2.0.1
