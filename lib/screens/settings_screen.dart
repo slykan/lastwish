@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../services/api_service.dart';
 
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
@@ -8,6 +9,65 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
+  bool _loading = true;
+  bool _saving = false;
+  String? _successMsg;
+  String? _errorMsg;
+
+  bool _notifyEmail = true;
+  bool _notifyPush = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _load();
+  }
+
+  Future<void> _load() async {
+    setState(() => _loading = true);
+    final data = await ApiService.fetchSettings();
+    if (mounted && data != null) {
+      setState(() {
+        _notifyEmail = (data['notify_email'] ?? true) == true ||
+            (data['notify_email'] ?? 1) == 1;
+        _notifyPush = (data['notify_push'] ?? true) == true ||
+            (data['notify_push'] ?? 1) == 1;
+        _loading = false;
+      });
+    } else {
+      setState(() => _loading = false);
+    }
+  }
+
+  Future<void> _save() async {
+    setState(() {
+      _saving = true;
+      _successMsg = null;
+      _errorMsg = null;
+    });
+
+    // We need current interval settings too — fetch first so we don't overwrite them
+    final current = await ApiService.fetchSettings();
+    if (!mounted) return;
+
+    final result = await ApiService.saveSettings(
+      aliveIntervalHours: current?['alive_interval_hours'] ?? 24,
+      graceHours: current?['grace_hours'] ?? 2,
+      reminderBeforeHours: current?['reminder_hours_before'] ?? 1,
+      notifyEmail: _notifyEmail ? 1 : 0,
+      notifyPush: _notifyPush ? 1 : 0,
+    );
+
+    setState(() => _saving = false);
+    if (!mounted) return;
+
+    if (result['success'] == true) {
+      setState(() => _successMsg = 'Notification preferences saved.');
+    } else {
+      setState(() => _errorMsg = result['message'] ?? 'Failed to save.');
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -15,15 +75,213 @@ class _SettingsScreenState extends State<SettingsScreen> {
       appBar: AppBar(
         backgroundColor: Colors.transparent,
         elevation: 0,
-        title: const Text('Settings', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600)),
+        title: const Text(
+          'Notifications',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+        ),
         leading: IconButton(
           icon: const Icon(Icons.arrow_back_ios, color: Colors.white70, size: 20),
           onPressed: () => Navigator.pop(context),
         ),
       ),
-      body: const Center(
-        child: Text('Coming soon', style: TextStyle(color: Colors.white38, fontSize: 16)),
+      body: _loading
+          ? const Center(
+              child: CircularProgressIndicator(color: Color(0xFF9B7FE4)))
+          : SingleChildScrollView(
+              padding:
+                  const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const SizedBox(height: 8),
+                  const Text(
+                    'Choose how you want to receive notifications.',
+                    style: TextStyle(color: Colors.white54, fontSize: 14),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ── Email ──
+                  _buildToggleCard(
+                    icon: Icons.email_outlined,
+                    title: 'Email notifications',
+                    subtitle:
+                        'Receive alarm alerts, reminders and invite updates by email.',
+                    value: _notifyEmail,
+                    onChanged: (v) => setState(() => _notifyEmail = v),
+                  ),
+
+                  const SizedBox(height: 14),
+
+                  // ── Push ──
+                  _buildToggleCard(
+                    icon: Icons.notifications_outlined,
+                    title: 'Push notifications',
+                    subtitle:
+                        'Receive real-time push alerts on your device.',
+                    value: _notifyPush,
+                    onChanged: (v) => setState(() => _notifyPush = v),
+                  ),
+
+                  const SizedBox(height: 6),
+
+                  // Warning when both off
+                  if (!_notifyEmail && !_notifyPush)
+                    Container(
+                      margin: const EdgeInsets.only(top: 10),
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFFF6B35).withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                            color: const Color(0xFFFF6B35).withOpacity(0.4)),
+                      ),
+                      child: const Row(
+                        children: [
+                          Icon(Icons.warning_amber_rounded,
+                              color: Color(0xFFFF6B35), size: 20),
+                          SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              'You have disabled all notifications. You will not be alerted about alarms or invites.',
+                              style: TextStyle(
+                                  color: Color(0xFFFF6B35), fontSize: 13),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 24),
+
+                  if (_errorMsg != null) ...[
+                    _buildAlert(_errorMsg!, isError: true),
+                    const SizedBox(height: 12),
+                  ],
+                  if (_successMsg != null) ...[
+                    _buildAlert(_successMsg!, isError: false),
+                    const SizedBox(height: 12),
+                  ],
+
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF9B7FE4),
+                        foregroundColor: Colors.white,
+                        padding:
+                            const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12)),
+                      ),
+                      onPressed: _saving ? null : _save,
+                      child: _saving
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                  strokeWidth: 2, color: Colors.white))
+                          : const Text('Save',
+                              style: TextStyle(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                  const SizedBox(height: 40),
+                ],
+              ),
+            ),
+    );
+  }
+
+  Widget _buildToggleCard({
+    required IconData icon,
+    required String title,
+    required String subtitle,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(18),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(
+          color: value
+              ? const Color(0xFF9B7FE4).withOpacity(0.4)
+              : Colors.white.withOpacity(0.07),
+        ),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: value
+                  ? const Color(0xFF9B7FE4).withOpacity(0.18)
+                  : Colors.white.withOpacity(0.06),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon,
+                color:
+                    value ? const Color(0xFF9B7FE4) : Colors.white38,
+                size: 22),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title,
+                    style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 15,
+                        fontWeight: FontWeight.w600)),
+                const SizedBox(height: 3),
+                Text(subtitle,
+                    style: const TextStyle(
+                        color: Colors.white54, fontSize: 12.5)),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeColor: const Color(0xFF9B7FE4),
+            activeTrackColor: const Color(0xFF9B7FE4).withOpacity(0.35),
+            inactiveThumbColor: Colors.white38,
+            inactiveTrackColor: Colors.white12,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAlert(String message, {required bool isError}) {
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isError
+            ? const Color(0xFFE53935).withOpacity(0.12)
+            : const Color(0xFF43A047).withOpacity(0.12),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isError
+              ? const Color(0xFFE53935).withOpacity(0.4)
+              : const Color(0xFF43A047).withOpacity(0.4),
+        ),
+      ),
+      child: Text(
+        message,
+        style: TextStyle(
+          color: isError ? const Color(0xFFEF9A9A) : const Color(0xFFA5D6A7),
+          fontSize: 13.5,
+        ),
       ),
     );
   }
 }
+

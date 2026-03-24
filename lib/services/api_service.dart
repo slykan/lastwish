@@ -377,6 +377,8 @@ class ApiService {
     required int aliveIntervalHours,
     required int graceHours,
     required int reminderBeforeHours,
+    int notifyEmail = 1,
+    int notifyPush = 1,
   }) async {
     try {
       final response = await http
@@ -387,6 +389,8 @@ class ApiService {
               'alive_interval_hours': aliveIntervalHours,
               'grace_hours': graceHours,
               'reminder_hours_before': reminderBeforeHours,
+              'notify_email': notifyEmail,
+              'notify_push': notifyPush,
             }),
           )
           .timeout(const Duration(seconds: 10));
