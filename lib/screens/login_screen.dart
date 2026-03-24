@@ -1,8 +1,10 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'hub/hub_screen.dart';
+import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -32,6 +34,15 @@ class _LoginScreenState extends State<LoginScreen> {
 
   final prefs = await SharedPreferences.getInstance();
   await prefs.setString("token", result['token']);
+
+  try {
+    final fcmToken = await FirebaseMessaging.instance.getToken();
+    if (fcmToken != null) {
+      await ApiService.saveFcmToken(fcmToken);
+    }
+  } catch (e) {
+    print("FCM token error: $e");
+  }
 
   ScaffoldMessenger.of(context).showSnackBar(
     const SnackBar(content: Text("Login success")),
@@ -158,6 +169,19 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Text("Login"),
+                      ),
+                    ),
+
+                    const SizedBox(height: 16),
+
+                    TextButton(
+                      onPressed: () => Navigator.push(
+                        context,
+                        MaterialPageRoute(builder: (_) => const RegisterScreen()),
+                      ),
+                      child: Text(
+                        "Don't have an account? Register",
+                        style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 13),
                       ),
                     ),
 
