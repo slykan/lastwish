@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'hub/hub_screen.dart';
+import 'onboarding_screen.dart';
 
 class RegisterScreen extends StatefulWidget {
   const RegisterScreen({super.key});
@@ -80,7 +81,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
       await prefs.setString('token', result['token']);
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HubScreen()),
+        MaterialPageRoute(builder: (_) => const OnboardingScreen()),
       );
     } else {
       setState(() => _error = result?['message'] ?? 'Registration failed. Please try again.');

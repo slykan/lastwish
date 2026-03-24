@@ -4,6 +4,7 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'hub/hub_screen.dart';
+import 'onboarding_screen.dart';
 import 'register_screen.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -48,9 +49,12 @@ class _LoginScreenState extends State<LoginScreen> {
     const SnackBar(content: Text("Login success")),
   );
 
+  final onboardingDone = prefs.getBool('onboarding_done') ?? false;
   Navigator.pushReplacement(
     context,
-    MaterialPageRoute(builder: (_) => const HubScreen()),
+    MaterialPageRoute(
+      builder: (_) => onboardingDone ? const HubScreen() : const OnboardingScreen(),
+    ),
   );
 
 } else {
