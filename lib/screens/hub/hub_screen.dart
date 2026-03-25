@@ -51,6 +51,7 @@ class _HubScreenState extends State<HubScreen> {
   void initState() {
     super.initState();
     _requestNotificationPermission();
+    _listenForegroundNotifications();
     _loadData();
   }
 
@@ -60,6 +61,33 @@ class _HubScreenState extends State<HubScreen> {
       badge: true,
       sound: true,
     );
+  }
+
+  void _listenForegroundNotifications() {
+    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+      if (!mounted) return;
+      final title = message.notification?.title ?? 'LastWish';
+      final body = message.notification?.body ?? '';
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(title, style: const TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+              if (body.isNotEmpty)
+                Text(body, style: const TextStyle(color: Colors.white70, fontSize: 13)),
+            ],
+          ),
+          backgroundColor: const Color(0xFF2A1F50),
+          behavior: SnackBarBehavior.floating,
+          duration: const Duration(seconds: 5),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        ),
+      );
+      // Refresh data when notification arrives
+      _loadData();
+    });
   }
 
   @override

@@ -2,6 +2,7 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
+import '../services/revenue_cat_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'hub/hub_screen.dart';
 import 'onboarding_screen.dart';
@@ -43,6 +44,15 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   } catch (e) {
     print("FCM token error: $e");
+  }
+
+  // Identify user in RevenueCat
+  final userId = result['user']?['id']?.toString() ?? result['id']?.toString();
+  if (userId != null) {
+    await RevenueCatService.identify(userId);
+    // Sync PRO status to backend
+    final isPro = await RevenueCatService.isPro();
+    await ApiService.syncProStatus(isPro: isPro);
   }
 
   ScaffoldMessenger.of(context).showSnackBar(

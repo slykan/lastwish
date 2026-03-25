@@ -26,15 +26,22 @@ class _ProfileScreenState extends State<ProfileScreen> {
   final _newPasswordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
 
+  // Will / Oporuka fields
+  final _willTextController = TextEditingController();
+  int _willDays = 7;
+
   bool _loadingProfile = true;
   bool _savingProfile = false;
   bool _savingPassword = false;
+  bool _savingWill = false;
   bool _deletingAccount = false;
 
   String? _profileSuccess;
   String? _profileError;
   String? _passwordSuccess;
   String? _passwordError;
+  String? _willSuccess;
+  String? _willError;
 
   static const _bloodTypes = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', '0+', '0-'];
 
@@ -42,6 +49,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
   void initState() {
     super.initState();
     _loadProfile();
+    _loadWill();
   }
 
   @override
@@ -55,6 +63,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
+    _willTextController.dispose();
     super.dispose();
   }
 
@@ -75,6 +84,31 @@ class _ProfileScreenState extends State<ProfileScreen> {
       });
     } else {
       setState(() => _loadingProfile = false);
+    }
+  }
+
+  Future<void> _loadWill() async {
+    final data = await ApiService.fetchSettings();
+    if (mounted && data != null) {
+      setState(() {
+        _willTextController.text = data['will_text'] ?? '';
+        _willDays = (data['will_days'] as num?)?.toInt() ?? 7;
+      });
+    }
+  }
+
+  Future<void> _saveWill() async {
+    setState(() { _savingWill = true; _willError = null; _willSuccess = null; });
+    final result = await ApiService.saveWill(
+      willText: _willTextController.text.trim(),
+      willDays: _willDays,
+    );
+    setState(() => _savingWill = false);
+    if (!mounted) return;
+    if (result['success'] == true) {
+      setState(() => _willSuccess = 'Oporuka sačuvana.');
+    } else {
+      setState(() => _willError = result['message'] ?? 'Greška pri snimanju.');
     }
   }
 
@@ -234,6 +268,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
+                  _buildWillSection(),
+                  const SizedBox(height: 16),
                   _buildSection(
                     title: 'Update Password',
                     subtitle: 'Ensure your account is using a long, random password to stay secure.',
@@ -373,6 +409,176 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
         ),
       ],
+    );
+  }
+
+  Widget _buildWillSection() {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF9B7FE4).withOpacity(0.06),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.2)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Header
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9B7FE4).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.article_outlined, color: Color(0xFF9B7FE4), size: 18),
+              ),
+              const SizedBox(width: 10),
+              const Text(
+                'Oporuka',
+                style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Poruka koja će biti poslana čuvarima ako se ne javiš u odabranom roku.',
+            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+          ),
+          const SizedBox(height: 18),
+
+          // Will text field — s lijevim borderom
+          Container(
+            decoration: BoxDecoration(
+              border: Border(
+                left: BorderSide(color: const Color(0xFF9B7FE4).withOpacity(0.6), width: 3),
+              ),
+            ),
+            padding: const EdgeInsets.only(left: 12),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Tekst oporuke',
+                  style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+                ),
+                const SizedBox(height: 6),
+                TextField(
+                  controller: _willTextController,
+                  maxLines: 6,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Lozinke, upute, poruka bližnjima...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 13),
+                    filled: true,
+                    fillColor: Colors.white.withOpacity(0.05),
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: const Color(0xFF9B7FE4).withOpacity(0.2)),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: BorderSide(color: const Color(0xFF9B7FE4).withOpacity(0.2)),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                      borderSide: const BorderSide(color: Color(0xFF9B7FE4)),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'Ostavite prazno ako ne želite slati oporuku.',
+            style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
+          ),
+
+          const SizedBox(height: 18),
+          Text(
+            'Pošalji nakon',
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          _buildWillDaysPicker(),
+
+          if (_willError != null) ...[
+            const SizedBox(height: 12),
+            _buildAlert(_willError!, isError: true),
+          ],
+          if (_willSuccess != null) ...[
+            const SizedBox(height: 12),
+            _buildAlert(_willSuccess!, isError: false),
+          ],
+          const SizedBox(height: 16),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: _buildButton('SAČUVAJ', _savingWill, _saveWill),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWillDaysPicker() {
+    return Wrap(
+      spacing: 8,
+      children: List.generate(7, (i) {
+        final day = i + 1;
+        final selected = _willDays == day;
+        final isFree = day == 7;
+        return GestureDetector(
+          onTap: () => setState(() => _willDays = day),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFF9B7FE4).withOpacity(0.25)
+                  : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF9B7FE4)
+                    : Colors.white.withOpacity(0.12),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${day}d',
+                  style: TextStyle(
+                    color: selected ? const Color(0xFF9B7FE4) : Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                if (!isFree)
+                  Text(
+                    'PRO',
+                    style: TextStyle(
+                      color: const Color(0xFFFFC857).withOpacity(0.8),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  )
+                else
+                  Text(
+                    'free',
+                    style: TextStyle(
+                      color: const Color(0xFF5BFF6A).withOpacity(0.7),
+                      fontSize: 9,
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 

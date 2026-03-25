@@ -22,6 +22,9 @@ class _RegisterScreenState extends State<RegisterScreen> {
   final _medicationsController = TextEditingController();
   final _emergencyNoteController = TextEditingController();
 
+  final _willTextController = TextEditingController();
+  int _willDays = 7;
+
   String? _bloodType;
   bool _showOptional = false;
   bool _loading = false;
@@ -39,6 +42,7 @@ class _RegisterScreenState extends State<RegisterScreen> {
     _allergiesController.dispose();
     _medicationsController.dispose();
     _emergencyNoteController.dispose();
+    _willTextController.dispose();
     super.dispose();
   }
 
@@ -79,6 +83,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
     if (result != null && result['token'] != null) {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('token', result['token']);
+
+      // Save will if user filled it in during registration
+      final willText = _willTextController.text.trim();
+      if (willText.isNotEmpty) {
+        await ApiService.saveWill(willText: willText, willDays: _willDays);
+      }
+
       Navigator.pushReplacement(
         context,
         MaterialPageRoute(builder: (_) => const OnboardingScreen()),
@@ -190,6 +201,38 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _buildField(_medicationsController, 'Medications', false, maxLines: 2),
                         const SizedBox(height: 12),
                         _buildField(_emergencyNoteController, 'Emergency Note', false, maxLines: 3),
+                        const SizedBox(height: 16),
+
+                        // ── OPORUKA ──
+                        Row(
+                          children: [
+                            const Icon(Icons.article_outlined, size: 14, color: Color(0xFF9B7FE4)),
+                            const SizedBox(width: 6),
+                            Text(
+                              'OPORUKA',
+                              style: TextStyle(
+                                color: const Color(0xFF9B7FE4).withOpacity(0.9),
+                                fontSize: 12,
+                                fontWeight: FontWeight.w700,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          'Neobavezno. Poruka za čuvare ako se ne javiš.',
+                          style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                        ),
+                        const SizedBox(height: 8),
+                        _buildField(_willTextController, 'Tekst oporuke', false, maxLines: 4),
+                        const SizedBox(height: 10),
+                        Text(
+                          'Pošalji nakon (dana):',
+                          style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
+                        ),
+                        const SizedBox(height: 6),
+                        _buildWillDaysPicker(),
                       ],
 
                       if (_error != null) ...[
@@ -257,6 +300,58 @@ class _RegisterScreenState extends State<RegisterScreen> {
           ),
         ],
       ),
+    );
+  }
+
+  Widget _buildWillDaysPicker() {
+    return Wrap(
+      spacing: 6,
+      runSpacing: 6,
+      children: List.generate(7, (i) {
+        final day = i + 1;
+        final selected = _willDays == day;
+        final isFree = day == 7;
+        return GestureDetector(
+          onTap: () => setState(() => _willDays = day),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFF9B7FE4).withOpacity(0.2)
+                  : Colors.white.withOpacity(0.05),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF9B7FE4)
+                    : Colors.white.withOpacity(0.1),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${day}d',
+                  style: TextStyle(
+                    color: selected ? const Color(0xFF9B7FE4) : Colors.white60,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  isFree ? 'free' : 'PRO',
+                  style: TextStyle(
+                    color: isFree
+                        ? const Color(0xFF5BFF6A).withOpacity(0.7)
+                        : const Color(0xFFFFC857).withOpacity(0.8),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
     );
   }
 

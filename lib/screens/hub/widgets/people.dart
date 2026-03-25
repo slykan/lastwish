@@ -1,7 +1,9 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import '../../../services/api_service.dart';
+import '../../../widgets/pro_upgrade_modal.dart';
 
 class PeopleYouProtect extends StatelessWidget {
   final List<Map<String, dynamic>>? protectedPeople;
@@ -141,6 +143,7 @@ class _PersonCard extends StatefulWidget {
 class _PersonCardState extends State<_PersonCard> {
   bool _showMedical = false;
   bool _locating = false;
+  bool _ringing = false;
   Timer? _ticker;
   late int _remainingSeconds;
   late int _maxSeconds;
@@ -194,6 +197,28 @@ class _PersonCardState extends State<_PersonCard> {
     if (h > 0) return '${h}h ${m.toString().padLeft(2, '0')}m ${s.toString().padLeft(2, '0')}s';
     if (m > 0) return '${m}m ${s.toString().padLeft(2, '0')}s';
     return '${s}s';
+  }
+
+  Future<void> _ring() async {
+    final userId = widget.person['id'];
+    if (userId == null) return;
+    setState(() => _ringing = true);
+    final result = await ApiService.ringProtected(userId as int);
+    if (!mounted) return;
+    setState(() => _ringing = false);
+
+    if (result['upgrade_required'] == true) {
+      ProUpgradeModal.show(context, 'Ring alarm is a PRO feature.');
+      return;
+    }
+
+    final ok = result['success'] == true;
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+      content: Text(ok ? 'Ring signal sent!' : (result['message'] ?? 'Failed to send ring.')),
+      backgroundColor: ok ? const Color(0xFF9B7FE4) : Colors.red.shade700,
+      behavior: SnackBarBehavior.floating,
+      duration: const Duration(seconds: 2),
+    ));
   }
 
   Future<void> _openLocation() async {
@@ -403,6 +428,24 @@ class _PersonCardState extends State<_PersonCard> {
           const SizedBox(height: 10),
           Row(
             children: [
+              // Ring button
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: _ringing ? null : _ring,
+                  icon: _ringing
+                      ? const SizedBox(width: 13, height: 13,
+                          child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFFFFB347)))
+                      : const Icon(Icons.notifications_active_outlined, size: 14),
+                  label: const Text('Ring', style: TextStyle(fontSize: 12)),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: const Color(0xFFFFB347),
+                    side: BorderSide(color: const Color(0xFFFFB347).withOpacity(0.4)),
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(9)),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               if ((widget.person['phone']?.toString() ?? '').isNotEmpty)
                 Expanded(
                   child: OutlinedButton.icon(

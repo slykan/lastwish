@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:lastwish/services/api_service.dart';
+import 'package:lastwish/widgets/pro_upgrade_modal.dart';
 
 /// Shows the invite dialog. [role] = 'guardian' or 'protected'.
 /// [sentInvites] = already sent invites to check for duplicates.
@@ -73,6 +74,9 @@ class _InviteDialogState extends State<_InviteDialog> {
     if (!mounted) return;
     if (result['success'] == true) {
       Navigator.pop(context, true);
+    } else if (result['upgrade_required'] == true) {
+      Navigator.pop(context, false);
+      ProUpgradeModal.show(context, 'Free plan allows only 1 guardian. Upgrade to PRO for unlimited.');
     } else {
       setState(() {
         _loading = false;

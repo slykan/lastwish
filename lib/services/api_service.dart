@@ -48,7 +48,11 @@ class ApiService {
             return {'success': true};
           }
           final body = jsonDecode(response.body);
-          return {'success': false, 'message': body['message'] ?? 'Error sending invite'};
+          return {
+            'success': false,
+            'message': body['message'] ?? 'Error sending invite',
+            'upgrade_required': body['upgrade_required'] == true,
+          };
         } catch (e) {
           print("SEND INVITE ERROR: $e");
           return {'success': false, 'message': 'Connection error'};
@@ -406,6 +410,31 @@ class ApiService {
     }
   }
 
+  // ================= WILL / OPORUKA =================
+  static Future<Map<String, dynamic>> saveWill({
+    required String willText,
+    required int willDays,
+  }) async {
+    try {
+      final response = await http
+          .put(
+            Uri.parse("$baseUrl/settings"),
+            headers: await getHeaders(),
+            body: jsonEncode({
+              'will_text': willText,
+              'will_days': willDays,
+            }),
+          )
+          .timeout(const Duration(seconds: 10));
+      final decoded = jsonDecode(response.body);
+      if (response.statusCode == 200) return {'success': true};
+      return {'success': false, 'message': decoded['message'] ?? 'Server error'};
+    } catch (e) {
+      print("SAVE WILL ERROR: $e");
+      return {'success': false, 'message': e.toString()};
+    }
+  }
+
   // ================= STATUS =================
   static Future<Map<String, dynamic>?> getStatus() async {
     try {
@@ -469,6 +498,42 @@ class ApiService {
     } catch (e) {
       print("CHECKIN ERROR: $e");
       return false;
+    }
+  }
+
+  // ================= PRO STATUS SYNC =================
+  static Future<void> syncProStatus({required bool isPro}) async {
+    try {
+      await http.post(
+        Uri.parse("$baseUrl/pro-status"),
+        headers: await getHeaders(),
+        body: jsonEncode({'is_pro': isPro}),
+      ).timeout(const Duration(seconds: 10));
+    } catch (e) {
+      print("SYNC PRO STATUS ERROR: $e");
+    }
+  }
+
+  // ================= RING PROTECTED =================
+  static Future<Map<String, dynamic>> ringProtected(int userId) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/guardian/ring/$userId"),
+        headers: await getHeaders(),
+      ).timeout(const Duration(seconds: 10));
+      print("RING STATUS: ${response.statusCode}");
+      final body = jsonDecode(response.body);
+      if (response.statusCode >= 200 && response.statusCode < 300) {
+        return {'success': true};
+      }
+      return {
+        'success': false,
+        'message': body['message'] ?? 'Failed to send ring.',
+        'upgrade_required': body['upgrade_required'] == true,
+      };
+    } catch (e) {
+      print("RING ERROR: $e");
+      return {'success': false, 'message': 'Connection error.'};
     }
   }
 

@@ -13,12 +13,15 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
-  int _step = 0;               // 0 = role pick, 1 = invite, 2 = done
+  int _step = 0;               // 0 = role pick, 1 = invite, 2 = will (protected only), 3 = done
   String? _role;               // 'guardian' or 'protected'
   bool _sending = false;
   bool _sent = false;
+  bool _savingWill = false;
   String? _error;
   final _emailCtrl = TextEditingController();
+  final _willTextCtrl = TextEditingController();
+  int _willDays = 7;
   late AnimationController _anim;
   late Animation<double> _fade;
 
@@ -36,6 +39,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   void dispose() {
     _emailCtrl.dispose();
+    _willTextCtrl.dispose();
     _anim.dispose();
     super.dispose();
   }
@@ -69,7 +73,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     if (result['success'] == true) {
       setState(() => _sent = true);
       await Future.delayed(const Duration(milliseconds: 600));
-      _nextStep(2);
+      // Protected users get the will step; guardians go straight to done
+      _nextStep(_role == 'protected' ? 2 : 3);
     } else {
       setState(() => _error = result['message']?.toString() ?? 'Failed to send invitation.');
     }
@@ -90,6 +95,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      resizeToAvoidBottomInset: false,
       body: Stack(
         children: [
           Positioned.fill(
@@ -116,6 +122,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case 1:
         return _buildInviteStep();
       case 2:
+        return _buildWillStep();
+      case 3:
         return _buildDoneStep();
       default:
         return const SizedBox.shrink();
@@ -219,6 +227,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         ? 'Enter the email of the person you\'d like to watch over.\nThey\'ll receive an invitation.'
         : 'Enter the email of the person who will look after you.\nThey\'ll receive an invitation.';
     final hint = isGuardian ? 'Protected person\'s email' : 'Guardian\'s email';
+    final totalSteps = isGuardian ? 2 : 3;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
@@ -234,7 +243,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           const SizedBox(height: 28),
 
           // Step indicator
-          _StepDots(current: 1),
+          _StepDots(current: 1, total: totalSteps),
           const SizedBox(height: 28),
 
           Row(
@@ -340,7 +349,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           // Skip
           Center(
             child: TextButton(
-              onPressed: _finish,
+              onPressed: () => _role == 'protected' ? _nextStep(2) : _finish(),
               child: Text(
                 'Skip, I\'ll do this later',
                 style: TextStyle(
@@ -355,11 +364,195 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
+  // ── STEP 2: will / oporuka (protected only) ───────────────────────────────
+
+  Widget _buildWillStep() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => _nextStep(1),
+            child: Icon(Icons.arrow_back_ios_new_rounded,
+                color: Colors.white.withOpacity(0.5), size: 20),
+          ),
+          const SizedBox(height: 28),
+          _StepDots(current: 2, total: 3),
+          const SizedBox(height: 28),
+
+          Row(
+            children: [
+              Container(
+                width: 46,
+                height: 46,
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9D4CFF).withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF9D4CFF).withOpacity(0.35)),
+                ),
+                child: const Icon(Icons.article_outlined, color: Color(0xFF9D4CFF), size: 22),
+              ),
+              const SizedBox(width: 14),
+              const Text(
+                'Last Will',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Text(
+            'Optional. A message sent to your guardians if you don\'t check in for a set number of days.',
+            style: TextStyle(
+              color: Colors.white.withOpacity(0.5),
+              fontSize: 13.5,
+              height: 1.55,
+            ),
+          ),
+          const SizedBox(height: 28),
+
+          // Will text field
+          ClipRRect(
+            borderRadius: BorderRadius.circular(14),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white.withOpacity(0.15)),
+                ),
+                child: TextField(
+                  controller: _willTextCtrl,
+                  maxLines: 5,
+                  style: const TextStyle(color: Colors.white, fontSize: 14),
+                  decoration: InputDecoration(
+                    hintText: 'Passwords, instructions, a message to loved ones...',
+                    hintStyle: TextStyle(color: Colors.white.withOpacity(0.3)),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.all(16),
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          const SizedBox(height: 18),
+          Text(
+            'Send after:',
+            style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+          ),
+          const SizedBox(height: 8),
+          _buildWillDaysPicker(),
+
+          const SizedBox(height: 24),
+
+          // Save & continue
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: _savingWill ? null : () async {
+                final text = _willTextCtrl.text.trim();
+                if (text.isNotEmpty) {
+                  setState(() => _savingWill = true);
+                  await ApiService.saveWill(willText: text, willDays: _willDays);
+                  setState(() => _savingWill = false);
+                }
+                _nextStep(3);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9D4CFF),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: _savingWill
+                  ? const SizedBox(width: 20, height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                  : const Text('Continue',
+                      style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+
+          const Spacer(),
+
+          Center(
+            child: TextButton(
+              onPressed: () => _nextStep(3),
+              child: Text(
+                'Skip for now',
+                style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 13),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWillDaysPicker() {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 6,
+      children: List.generate(7, (i) {
+        final day = i + 1;
+        final selected = _willDays == day;
+        final isFree = day == 7;
+        return GestureDetector(
+          onTap: () => setState(() => _willDays = day),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+            decoration: BoxDecoration(
+              color: selected
+                  ? const Color(0xFF9D4CFF).withOpacity(0.2)
+                  : Colors.white.withOpacity(0.07),
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: selected
+                    ? const Color(0xFF9D4CFF)
+                    : Colors.white.withOpacity(0.12),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  '${day}d',
+                  style: TextStyle(
+                    color: selected ? const Color(0xFF9D4CFF) : Colors.white70,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                Text(
+                  isFree ? 'free' : 'PRO',
+                  style: TextStyle(
+                    color: isFree
+                        ? const Color(0xFF5BFF6A).withOpacity(0.7)
+                        : const Color(0xFFFFC857).withOpacity(0.8),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
   // ── STEP 2: done ──────────────────────────────────────────────────────────
 
   Widget _buildDoneStep() {
     final isGuardian = _role == 'guardian';
     final accentColor = isGuardian ? const Color(0xFF4C9DFF) : const Color(0xFF9D4CFF);
+    final totalSteps = isGuardian ? 2 : 3;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
@@ -367,7 +560,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           const Spacer(flex: 2),
-          _StepDots(current: 2),
+          _StepDots(current: totalSteps, total: totalSteps),
           const SizedBox(height: 40),
 
           // Big check
@@ -555,14 +748,15 @@ class _RoleCard extends StatelessWidget {
 }
 
 class _StepDots extends StatelessWidget {
-  final int current; // 1 or 2
-  const _StepDots({required this.current});
+  final int current;
+  final int total;
+  const _StepDots({required this.current, this.total = 2});
 
   @override
   Widget build(BuildContext context) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.center,
-      children: List.generate(2, (i) {
+      children: List.generate(total, (i) {
         final active = (i + 1) <= current;
         return Container(
           margin: const EdgeInsets.symmetric(horizontal: 4),
