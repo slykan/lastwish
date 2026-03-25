@@ -501,6 +501,26 @@ class ApiService {
     }
   }
 
+  // ================= GOOGLE LOGIN =================
+  static Future<Map<String, dynamic>?> loginWithGoogle({required String idToken}) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/auth/google"),
+        headers: {"Content-Type": "application/json", "Accept": "application/json"},
+        body: jsonEncode({'id_token': idToken}),
+      ).timeout(const Duration(seconds: 15));
+
+      print("GOOGLE LOGIN STATUS: ${response.statusCode}");
+      print("GOOGLE LOGIN BODY: ${response.body}");
+
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return null;
+    } catch (e) {
+      print("GOOGLE LOGIN ERROR: $e");
+      return null;
+    }
+  }
+
   // ================= PRO STATUS SYNC =================
   static Future<void> syncProStatus({required bool isPro}) async {
     try {

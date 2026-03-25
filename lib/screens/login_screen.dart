@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
 import '../services/revenue_cat_service.dart';
+import '../services/google_auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'hub/hub_screen.dart';
 import 'onboarding_screen.dart';
@@ -21,6 +22,45 @@ class _LoginScreenState extends State<LoginScreen> {
   final passwordController = TextEditingController();
 
   bool loading = false;
+  bool _googleLoading = false;
+
+  Future<void> _loginWithGoogle() async {
+    setState(() => _googleLoading = true);
+    final result = await GoogleAuthService.signIn();
+    if (!mounted) return;
+    setState(() => _googleLoading = false);
+
+    if (result != null && result['token'] != null) {
+      await _handleLoginSuccess(result);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Google sign in failed. Please try again.")),
+      );
+    }
+  }
+
+  Future<void> _handleLoginSuccess(Map<String, dynamic> result) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString("token", result['token']);
+
+    try {
+      final fcmToken = await FirebaseMessaging.instance.getToken();
+      if (fcmToken != null) await ApiService.saveFcmToken(fcmToken);
+    } catch (e) { print("FCM token error: $e"); }
+
+    final userId = result['user']?['id']?.toString() ?? result['id']?.toString();
+    if (userId != null) {
+      await RevenueCatService.identify(userId);
+      final isPro = await RevenueCatService.isPro();
+      await ApiService.syncProStatus(isPro: isPro);
+    }
+
+    final onboardingDone = prefs.getBool('onboarding_done') ?? false;
+    if (!mounted) return;
+    Navigator.pushReplacement(context, MaterialPageRoute(
+      builder: (_) => onboardingDone ? const HubScreen() : const OnboardingScreen(),
+    ));
+  }
 
   void login() async {
   setState(() => loading = true);
@@ -33,41 +73,8 @@ class _LoginScreenState extends State<LoginScreen> {
   setState(() => loading = false);
 
   if (result != null && result['token'] != null) {
-
-  final prefs = await SharedPreferences.getInstance();
-  await prefs.setString("token", result['token']);
-
-  try {
-    final fcmToken = await FirebaseMessaging.instance.getToken();
-    if (fcmToken != null) {
-      await ApiService.saveFcmToken(fcmToken);
-    }
-  } catch (e) {
-    print("FCM token error: $e");
-  }
-
-  // Identify user in RevenueCat
-  final userId = result['user']?['id']?.toString() ?? result['id']?.toString();
-  if (userId != null) {
-    await RevenueCatService.identify(userId);
-    // Sync PRO status to backend
-    final isPro = await RevenueCatService.isPro();
-    await ApiService.syncProStatus(isPro: isPro);
-  }
-
-  ScaffoldMessenger.of(context).showSnackBar(
-    const SnackBar(content: Text("Login success")),
-  );
-
-  final onboardingDone = prefs.getBool('onboarding_done') ?? false;
-  Navigator.pushReplacement(
-    context,
-    MaterialPageRoute(
-      builder: (_) => onboardingDone ? const HubScreen() : const OnboardingScreen(),
-    ),
-  );
-
-} else {
+    await _handleLoginSuccess(result);
+  } else {
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text("Login failed")),
     );
@@ -183,6 +190,40 @@ class _LoginScreenState extends State<LoginScreen> {
                                 child: CircularProgressIndicator(strokeWidth: 2),
                               )
                             : const Text("Login"),
+                      ),
+                    ),
+
+                    const SizedBox(height: 12),
+
+                    Row(children: [
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.15))),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 12),
+                        child: Text('or', style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12)),
+                      ),
+                      Expanded(child: Divider(color: Colors.white.withOpacity(0.15))),
+                    ]),
+
+                    const SizedBox(height: 12),
+
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: (_googleLoading || loading) ? null : _loginWithGoogle,
+                        icon: _googleLoading
+                            ? const SizedBox(width: 18, height: 18,
+                                child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                            : Image.network(
+                                'https://www.google.com/favicon.ico',
+                                width: 18, height: 18,
+                                errorBuilder: (_, __, ___) => const Icon(Icons.g_mobiledata, size: 20, color: Colors.white),
+                              ),
+                        label: const Text('Continue with Google', style: TextStyle(color: Colors.white)),
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                        ),
                       ),
                     ),
 
