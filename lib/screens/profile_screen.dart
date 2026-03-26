@@ -106,9 +106,9 @@ class _ProfileScreenState extends State<ProfileScreen> {
     setState(() => _savingWill = false);
     if (!mounted) return;
     if (result['success'] == true) {
-      setState(() => _willSuccess = 'Oporuka sačuvana.');
+      setState(() => _willSuccess = 'Will saved.');
     } else {
-      setState(() => _willError = result['message'] ?? 'Greška pri snimanju.');
+      setState(() => _willError = result['message'] ?? 'Failed to save.');
     }
   }
 
@@ -437,14 +437,14 @@ class _ProfileScreenState extends State<ProfileScreen> {
               ),
               const SizedBox(width: 10),
               const Text(
-                'Oporuka',
+                'Will',
                 style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.w600),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            'Poruka koja će biti poslana čuvarima ako se ne javiš u odabranom roku.',
+            'A message that will be sent to your guardians if you fail to check in.',
             style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
           ),
           const SizedBox(height: 18),
@@ -461,7 +461,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  'Tekst oporuke',
+                  'Will text',
                   style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
                 ),
                 const SizedBox(height: 6),
@@ -470,7 +470,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
                   maxLines: 6,
                   style: const TextStyle(color: Colors.white, fontSize: 14),
                   decoration: InputDecoration(
-                    hintText: 'Lozinke, upute, poruka bližnjima...',
+                    hintText: 'Passwords, instructions, a message to your loved ones...',
                     hintStyle: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 13),
                     filled: true,
                     fillColor: Colors.white.withOpacity(0.05),
@@ -494,13 +494,13 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 6),
           Text(
-            'Ostavite prazno ako ne želite slati oporuku.',
+            'Leave empty if you do not want to send a will.',
             style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 11),
           ),
 
           const SizedBox(height: 18),
           Text(
-            'Pošalji nakon',
+            'Send after',
             style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
           ),
           const SizedBox(height: 8),
@@ -517,7 +517,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
           const SizedBox(height: 16),
           Align(
             alignment: Alignment.centerLeft,
-            child: _buildButton('SAČUVAJ', _savingWill, _saveWill),
+            child: _buildButton('SAVE', _savingWill, _saveWill),
           ),
         ],
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../widgets/pro_upgrade_modal.dart';
 
 class IntervalsScreen extends StatefulWidget {
   const IntervalsScreen({super.key});
@@ -83,30 +84,7 @@ class _IntervalsScreenState extends State<IntervalsScreen> {
   }
 
   void _showProModal() {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF1E1E2E),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Row(
-          children: const [
-            Icon(Icons.star_rounded, color: Color(0xFFFFC857), size: 22),
-            SizedBox(width: 8),
-            Text('PRO Feature', style: TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold)),
-          ],
-        ),
-        content: const Text(
-          'Shorter check-in intervals (6h, 12h) are available in the PRO plan.\n\nPRO plan coming soon!',
-          style: TextStyle(color: Colors.white70, fontSize: 14, height: 1.5),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(ctx),
-            child: const Text('OK', style: TextStyle(color: Color(0xFF9B7FE4))),
-          ),
-        ],
-      ),
-    );
+    ProUpgradeModal.show(context, 'Shorter check-in intervals (6h, 12h) require LastWish PRO.');
   }
 
   @override
