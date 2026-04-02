@@ -16,6 +16,7 @@ void main() async {
   await Firebase.initializeApp();
   await RevenueCatService.init();
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+  await FirebaseMessaging.instance.requestPermission();
 
   // Foreground FCM handler
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
