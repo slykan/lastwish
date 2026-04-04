@@ -411,7 +411,13 @@ class _HubScreenState extends State<HubScreen> {
                           onRemind: (person) async {
                             final id = person['id'];
                             if (id == null) return;
-                            await ApiService.remindProtected(id);
+                            final ok = await ApiService.remindProtected(id);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(ok == true ? 'Reminder sent!' : 'Failed to send reminder.'),
+                              backgroundColor: ok == true ? Colors.green : Colors.red,
+                              duration: const Duration(seconds: 2),
+                            ));
                           },
                         ),
                         const SizedBox(height: 12),
@@ -425,7 +431,14 @@ class _HubScreenState extends State<HubScreen> {
                                   protectedPeople: protectedPeople,
                                   onRemind: (person) async {
                                     final id = person['id'];
-                                    if (id != null) await ApiService.remindProtected(id);
+                                    if (id == null) return;
+                                    final ok = await ApiService.remindProtected(id);
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text(ok == true ? 'Reminder sent!' : 'Failed to send reminder.'),
+                                      backgroundColor: ok == true ? Colors.green : Colors.red,
+                                      duration: const Duration(seconds: 2),
+                                    ));
                                   },
                                 ),
                               ),
@@ -443,7 +456,14 @@ class _HubScreenState extends State<HubScreen> {
                                   protectedPeople: protectedPeople,
                                   onRemind: (person) async {
                                     final id = person['id'];
-                                    if (id != null) await ApiService.remindProtected(id);
+                                    if (id == null) return;
+                                    final ok = await ApiService.remindProtected(id);
+                                    if (!context.mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                      content: Text(ok == true ? 'Reminder sent!' : 'Failed to send reminder.'),
+                                      backgroundColor: ok == true ? Colors.green : Colors.red,
+                                      duration: const Duration(seconds: 2),
+                                    ));
                                   },
                                 ),
                               ),
