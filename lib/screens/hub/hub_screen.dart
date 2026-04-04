@@ -19,6 +19,7 @@ import 'package:lastwish/screens/hub/protected_detail_screen.dart';
 import 'package:lastwish/screens/profile_screen.dart';
 import 'package:lastwish/screens/settings_screen.dart';
 import 'package:lastwish/screens/intervals_screen.dart';
+import 'package:lastwish/screens/about_screen.dart';
 
 class HubScreen extends StatefulWidget {
   const HubScreen({super.key});
@@ -253,7 +254,12 @@ class _HubScreenState extends State<HubScreen> {
                   MaterialPageRoute(builder: (_) => const IntervalsScreen()),
                 );
               },
-
+            onAbout: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const AboutScreen()),
+                );
+              },
             onLogout: () async {
               final prefs = await SharedPreferences.getInstance();
               await prefs.remove("token");

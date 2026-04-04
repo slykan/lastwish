@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../services/api_service.dart';
+import '../services/revenue_cat_service.dart';
 import '../widgets/pro_upgrade_modal.dart';
 
 class IntervalsScreen extends StatefulWidget {
@@ -12,6 +13,7 @@ class IntervalsScreen extends StatefulWidget {
 class _IntervalsScreenState extends State<IntervalsScreen> {
   bool _loading = true;
   bool _saving = false;
+  bool _isPro = false;
   String? _successMsg;
   String? _errorMsg;
 
@@ -54,16 +56,22 @@ class _IntervalsScreenState extends State<IntervalsScreen> {
 
   Future<void> _load() async {
     setState(() => _loading = true);
-    final data = await ApiService.fetchSettings();
-    if (mounted && data != null) {
+    final results = await Future.wait([
+      ApiService.fetchSettings(),
+      RevenueCatService.isPro(),
+    ]);
+    final data = results[0] as Map<String, dynamic>?;
+    final isPro = results[1] as bool;
+    if (mounted) {
       setState(() {
-        _aliveInterval  = data['alive_interval_hours'] ?? 24;
-        _gracePeriod    = data['grace_hours'] ?? 2;
-        _reminderBefore = data['reminder_hours_before'] ?? 1;
+        _isPro = isPro;
+        if (data != null) {
+          _aliveInterval  = data['alive_interval_hours'] ?? 24;
+          _gracePeriod    = data['grace_hours'] ?? 2;
+          _reminderBefore = data['reminder_hours_before'] ?? 1;
+        }
         _loading = false;
       });
-    } else {
-      setState(() => _loading = false);
     }
   }
 
@@ -216,7 +224,7 @@ class _IntervalsScreenState extends State<IntervalsScreen> {
           style: const TextStyle(color: Colors.white, fontSize: 14),
           onChanged: (v) {
             final opt = _aliveOptions.firstWhere((o) => o['hours'] == v);
-            if (opt['pro'] == true) { _showProModal(); return; }
+            if (opt['pro'] == true && !_isPro) { _showProModal(); return; }
             setState(() => _aliveInterval = v!);
           },
           items: _aliveOptions.map((o) {
