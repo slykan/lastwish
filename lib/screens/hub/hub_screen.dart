@@ -441,7 +441,7 @@ class _HubScreenState extends State<HubScreen> {
                                     ));
                                   },
                                   onRemove: (person) async {
-                                    final rid = person['id'];
+                                    final rid = person['relationship_id'];
                                     if (rid == null) return;
                                     final ok = await ApiService.removeProtected(rid);
                                     if (!context.mounted) return;
@@ -473,7 +473,7 @@ class _HubScreenState extends State<HubScreen> {
                                     ));
                                   },
                                   onRemove: (person) async {
-                                    final rid = person['id'];
+                                    final rid = person['relationship_id'];
                                     if (rid == null) return;
                                     final ok = await ApiService.removeProtected(rid);
                                     if (!context.mounted) return;
