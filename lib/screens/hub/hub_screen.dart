@@ -21,6 +21,7 @@ import 'package:lastwish/screens/settings_screen.dart';
 import 'package:lastwish/screens/intervals_screen.dart';
 import 'package:lastwish/screens/about_screen.dart';
 import 'package:lastwish/services/revenue_cat_service.dart';
+import 'package:lastwish/widgets/pro_upgrade_modal.dart';
 
 class HubScreen extends StatefulWidget {
   const HubScreen({super.key});
@@ -451,11 +452,15 @@ class _HubScreenState extends State<HubScreen> {
                                     if (!context.mounted) return;
                                     if (ok) _loadData();
                                   },
-                                  onLocate: _isPro ? (person) async {
+                                  onLocate: (person) async {
+                                    if (!_isPro) {
+                                      ProUpgradeModal.show(context, 'Location request is a PRO feature. Upgrade to unlock.');
+                                      return;
+                                    }
                                     final id = person['id'];
                                     if (id == null) return;
                                     await ApiService.requestLocation(id);
-                                  } : null,
+                                  },
                                 ),
                               ),
                             );
@@ -498,11 +503,15 @@ class _HubScreenState extends State<HubScreen> {
                                     if (!context.mounted) return;
                                     if (ok) _loadData();
                                   },
-                                  onLocate: _isPro ? (person) async {
+                                  onLocate: (person) async {
+                                    if (!_isPro) {
+                                      ProUpgradeModal.show(context, 'Location request is a PRO feature. Upgrade to unlock.');
+                                      return;
+                                    }
                                     final id = person['id'];
                                     if (id == null) return;
                                     await ApiService.requestLocation(id);
-                                  } : null,
+                                  },
                                 ),
                               ),
                             );

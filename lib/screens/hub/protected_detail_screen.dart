@@ -260,7 +260,7 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
     if (_locateLoading || widget.onLocate == null) return;
     setState(() { _locateLoading = true; _locateResult = null; });
     try {
-      await widget.onLocate!(widget.person);
+      widget.onLocate!();
       if (!mounted) return;
       setState(() { _locateLoading = false; _locateResult = true; });
     } catch (_) {
