@@ -10,12 +10,14 @@ class ProtectedDetailScreen extends StatefulWidget {
   final List<Map<String, dynamic>> protectedPeople;
   final Future<void> Function(Map<String, dynamic> person)? onRemind;
   final Future<void> Function(Map<String, dynamic> person)? onRemove;
+  final Future<void> Function(Map<String, dynamic> person)? onLocate;
 
   const ProtectedDetailScreen({
     super.key,
     required this.protectedPeople,
     this.onRemind,
     this.onRemove,
+    this.onLocate,
   });
 
   @override
@@ -128,6 +130,9 @@ class _ProtectedDetailScreenState extends State<ProtectedDetailScreen> {
                             }
                           }
                         : null,
+                    onLocate: widget.onLocate != null
+                        ? () => widget.onLocate!(_people[index])
+                        : null,
                   );
                 },
               ),
@@ -168,12 +173,14 @@ class _PersonDetailCard extends StatefulWidget {
   final String Function(int) formatRemaining;
   final VoidCallback? onRemind;
   final VoidCallback? onRemove;
+  final VoidCallback? onLocate;
 
   const _PersonDetailCard({
     required this.person,
     required this.formatRemaining,
     this.onRemind,
     this.onRemove,
+    this.onLocate,
   });
 
   @override
@@ -192,6 +199,8 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
   bool _mapReady = false;
   bool _remindLoading = false;
   bool? _remindResult;
+  bool _locateLoading = false;
+  bool? _locateResult;
   Timer? _ticker;
   late int _remainingSeconds;
   late int _maxSeconds;
@@ -244,6 +253,22 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
     });
     Future.delayed(const Duration(seconds: 4), () {
       if (mounted) setState(() => _remindResult = null);
+    });
+  }
+
+  Future<void> _doLocate() async {
+    if (_locateLoading || widget.onLocate == null) return;
+    setState(() { _locateLoading = true; _locateResult = null; });
+    try {
+      await widget.onLocate!(widget.person);
+      if (!mounted) return;
+      setState(() { _locateLoading = false; _locateResult = true; });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() { _locateLoading = false; _locateResult = false; });
+    }
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _locateResult = null);
     });
   }
 
@@ -502,9 +527,44 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
                     }
                   },
                 ),
+                if (widget.onLocate != null) ...[
+                  const SizedBox(width: 8),
+                  _ActionButton(
+                    icon: _locateLoading ? Icons.hourglass_top : Icons.location_on_outlined,
+                    label: 'Locate',
+                    color: const Color(0xFFFFC857),
+                    onTap: _locateLoading ? null : _doLocate,
+                  ),
+                ],
               ],
             ),
           ),
+
+          // ── Locate feedback ──
+          if (_locateResult != null)
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 0),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: (_locateResult == true ? const Color(0xFF1E7E34) : const Color(0xFF7E1E1E)).withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: (_locateResult == true ? const Color(0xFF1E7E34) : const Color(0xFFFF5E5E)).withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_locateResult == true ? Icons.check_circle_outline : Icons.error_outline,
+                        size: 13, color: _locateResult == true ? const Color(0xFF5BFF6A) : const Color(0xFFFF5E5E)),
+                    const SizedBox(width: 6),
+                    Text(
+                      _locateResult == true ? 'Location request sent' : 'Failed to send location request',
+                      style: TextStyle(color: _locateResult == true ? const Color(0xFF5BFF6A) : const Color(0xFFFF5E5E), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
           // ── Remind feedback ──
           if (_remindResult != null)

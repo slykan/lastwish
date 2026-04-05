@@ -20,6 +20,7 @@ import 'package:lastwish/screens/profile_screen.dart';
 import 'package:lastwish/screens/settings_screen.dart';
 import 'package:lastwish/screens/intervals_screen.dart';
 import 'package:lastwish/screens/about_screen.dart';
+import 'package:lastwish/services/revenue_cat_service.dart';
 
 class HubScreen extends StatefulWidget {
   const HubScreen({super.key});
@@ -40,6 +41,7 @@ class _HubScreenState extends State<HubScreen> {
   bool hasGuardian = false;
   bool flash = false;
   String userName = 'Protected user';
+  bool _isPro = false;
 
   Map<String, dynamic>? userData;
   Map<String, dynamic>? statusData;
@@ -101,6 +103,7 @@ class _HubScreenState extends State<HubScreen> {
     try {
       final user = await ApiService.getUser();
       final status = await ApiService.getStatus();
+      final isPro = await RevenueCatService.isPro();
 
       final guardiansApi = await ApiService.fetchGuardians();
       final invitesApi = await ApiService.fetchInvites();
@@ -109,6 +112,7 @@ class _HubScreenState extends State<HubScreen> {
       setState(() {
         userData = user;
         statusData = status;
+        _isPro = isPro;
         userName = user?['name'] ?? 'Protected user';
         hasGuardian = user?['has_guardian'] == true;
         totalSeconds = status?['total_seconds'] ?? 86400;
@@ -447,6 +451,11 @@ class _HubScreenState extends State<HubScreen> {
                                     if (!context.mounted) return;
                                     if (ok) _loadData();
                                   },
+                                  onLocate: _isPro ? (person) async {
+                                    final id = person['id'];
+                                    if (id == null) return;
+                                    await ApiService.requestLocation(id);
+                                  } : null,
                                 ),
                               ),
                             );
@@ -489,6 +498,11 @@ class _HubScreenState extends State<HubScreen> {
                                     if (!context.mounted) return;
                                     if (ok) _loadData();
                                   },
+                                  onLocate: _isPro ? (person) async {
+                                    final id = person['id'];
+                                    if (id == null) return;
+                                    await ApiService.requestLocation(id);
+                                  } : null,
                                 ),
                               ),
                             );

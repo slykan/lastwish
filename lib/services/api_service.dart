@@ -158,6 +158,20 @@ class ApiService {
       }
     }
 
+    static Future<bool> requestLocation(int userId) async {
+      try {
+        final response = await http.post(
+          Uri.parse("$baseUrl/guardian/request-location/$userId"),
+          headers: await getHeaders(),
+        ).timeout(const Duration(seconds: 10));
+        print("REQUEST LOCATION STATUS: ${response.statusCode}");
+        return response.statusCode >= 200 && response.statusCode < 300;
+      } catch (e) {
+        print("REQUEST LOCATION ERROR: $e");
+        return false;
+      }
+    }
+
     static Future<bool> removeProtected(int relationshipId) async {
       try {
         final response = await http.post(
