@@ -440,6 +440,13 @@ class _HubScreenState extends State<HubScreen> {
                                       duration: const Duration(seconds: 2),
                                     ));
                                   },
+                                  onRemove: (person) async {
+                                    final rid = person['id'];
+                                    if (rid == null) return;
+                                    final ok = await ApiService.removeProtected(rid);
+                                    if (!context.mounted) return;
+                                    if (ok) _loadData();
+                                  },
                                 ),
                               ),
                             );
@@ -464,6 +471,13 @@ class _HubScreenState extends State<HubScreen> {
                                       backgroundColor: ok == true ? Colors.green : Colors.red,
                                       duration: const Duration(seconds: 2),
                                     ));
+                                  },
+                                  onRemove: (person) async {
+                                    final rid = person['id'];
+                                    if (rid == null) return;
+                                    final ok = await ApiService.removeProtected(rid);
+                                    if (!context.mounted) return;
+                                    if (ok) _loadData();
                                   },
                                 ),
                               ),

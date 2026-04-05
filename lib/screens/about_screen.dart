@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import '../services/revenue_cat_service.dart';
 import '../widgets/pro_upgrade_modal.dart';
 
@@ -13,6 +14,7 @@ class _AboutScreenState extends State<AboutScreen> {
   bool _isPro = false;
   bool _loading = true;
   bool _restoring = false;
+  String _version = '';
 
   @override
   void initState() {
@@ -22,7 +24,14 @@ class _AboutScreenState extends State<AboutScreen> {
 
   Future<void> _load() async {
     final isPro = await RevenueCatService.isPro();
-    if (mounted) setState(() { _isPro = isPro; _loading = false; });
+    final info = await PackageInfo.fromPlatform();
+    if (mounted) {
+      setState(() {
+        _isPro = isPro;
+        _version = info.version;
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _restore() async {
@@ -56,7 +65,7 @@ class _AboutScreenState extends State<AboutScreen> {
               padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
               child: Column(
                 children: [
-                  // App description
+                  // App info card
                   Container(
                     width: double.infinity,
                     padding: const EdgeInsets.all(20),
@@ -68,11 +77,27 @@ class _AboutScreenState extends State<AboutScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(children: [
-                          const Icon(Icons.favorite, color: Color(0xFF9B7FE4), size: 20),
-                          const SizedBox(width: 8),
-                          const Text('LastWish', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
-                        ]),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(children: [
+                              const Icon(Icons.favorite, color: Color(0xFF9B7FE4), size: 20),
+                              const SizedBox(width: 8),
+                              const Text('LastWish', style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.bold)),
+                            ]),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: Colors.white.withOpacity(0.07),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                'v$_version',
+                                style: const TextStyle(color: Colors.white54, fontSize: 12, fontWeight: FontWeight.w500),
+                              ),
+                            ),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                         Text(
                           'LastWish is a safety app that lets your trusted guardians know if something happens to you. '
@@ -103,22 +128,45 @@ class _AboutScreenState extends State<AboutScreen> {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Row(children: [
-                          Icon(
-                            _isPro ? Icons.workspace_premium : Icons.lock_outline,
-                            color: _isPro ? const Color(0xFFFFC857) : Colors.white54,
-                            size: 20,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            _isPro ? 'PRO Plan' : 'Free Plan',
-                            style: TextStyle(
-                              color: _isPro ? const Color(0xFFFFC857) : Colors.white,
-                              fontSize: 16,
-                              fontWeight: FontWeight.bold,
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            Row(children: [
+                              Icon(
+                                _isPro ? Icons.workspace_premium : Icons.lock_outline,
+                                color: _isPro ? const Color(0xFFFFC857) : Colors.white54,
+                                size: 20,
+                              ),
+                              const SizedBox(width: 8),
+                              Text(
+                                _isPro ? 'PRO Plan' : 'Free Plan',
+                                style: TextStyle(
+                                  color: _isPro ? const Color(0xFFFFC857) : Colors.white,
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ]),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: _isPro
+                                    ? const Color(0xFFFFC857).withOpacity(0.15)
+                                    : Colors.white.withOpacity(0.07),
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                _isPro ? 'ACTIVE' : 'FREE',
+                                style: TextStyle(
+                                  color: _isPro ? const Color(0xFFFFC857) : Colors.white38,
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.8,
+                                ),
+                              ),
                             ),
-                          ),
-                        ]),
+                          ],
+                        ),
                         const SizedBox(height: 12),
                         if (_isPro) ...[
                           _featureRow('Unlimited guardians', true),

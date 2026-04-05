@@ -157,6 +157,20 @@ class ApiService {
         return false;
       }
     }
+
+    static Future<bool> removeProtected(int relationshipId) async {
+      try {
+        final response = await http.post(
+          Uri.parse("$baseUrl/guardian/relationship/$relationshipId/remove"),
+          headers: await getHeaders(),
+        ).timeout(const Duration(seconds: 10));
+        print("REMOVE PROTECTED STATUS: ${response.statusCode}");
+        return response.statusCode >= 200 && response.statusCode < 300;
+      } catch (e) {
+        print("REMOVE PROTECTED ERROR: $e");
+        return false;
+      }
+    }
   static const String baseUrl = "https://alivecheck.app/api";
 
   // ================= LOGIN =================
