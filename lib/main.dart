@@ -14,8 +14,19 @@ final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp();
 
-  if (message.data['type'] == 'ring') {
-    final guardianName = message.data['guardian_name'] ?? 'Your guardian';
+  final type = message.data['type'];
+
+  if (type == 'ring' || type == 'alert') {
+    final isAlert = type == 'alert';
+    final userName = isAlert
+        ? (message.data['user_name'] ?? 'Someone')
+        : (message.data['guardian_name'] ?? 'Your guardian');
+    final title = isAlert
+        ? '$userName missed their check-in!'
+        : '$userName is calling you!';
+    final body = isAlert
+        ? '$userName has not checked in on time.'
+        : 'Your guardian is sending you an urgent alert.';
 
     const AndroidNotificationDetails androidDetails = AndroidNotificationDetails(
       'ring_channel',
@@ -37,15 +48,14 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
     );
 
     await flutterLocalNotificationsPlugin.show(
-      0,
-      '$guardianName is calling you!',
-      'Your guardian is sending you an urgent alert.',
+      isAlert ? 1 : 0,
+      title,
+      body,
       notificationDetails,
     );
 
     FlutterRingtonePlayer().playAlarm(looping: false);
 
-    // Stop alarm after 20 seconds
     Timer(const Duration(seconds: 20), () {
       FlutterRingtonePlayer().stop();
     });
@@ -78,13 +88,22 @@ void main() async {
   // Foreground FCM handler
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final type = message.data['type'];
-    if (type == 'ring') {
-      final guardianName = message.data['guardian_name'] ?? 'Your guardian';
+    if (type == 'ring' || type == 'alert') {
+      final isAlert = type == 'alert';
+      final userName = isAlert
+          ? (message.data['user_name'] ?? 'Someone')
+          : (message.data['guardian_name'] ?? 'Your guardian');
+      final title = isAlert
+          ? '$userName missed their check-in!'
+          : '$userName is calling you!';
+      final body = isAlert
+          ? '$userName has not checked in on time.'
+          : 'Your guardian is sending you an urgent alert.';
 
       flutterLocalNotificationsPlugin.show(
-        0,
-        '$guardianName is calling you!',
-        'Your guardian is sending you an urgent alert.',
+        isAlert ? 1 : 0,
+        title,
+        body,
         const NotificationDetails(
           android: AndroidNotificationDetails(
             'ring_channel',
