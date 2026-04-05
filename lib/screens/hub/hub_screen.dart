@@ -453,7 +453,17 @@ class _HubScreenState extends State<HubScreen> {
                           },
                           onAddProtected: () async {
                             final sent = await showInviteDialog(context, role: 'protected');
-                            if (sent == true && mounted) _loadData();
+                            if (!mounted) return;
+                            if (sent == true) {
+                              _loadData();
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: const Text('Invitation sent!'),
+                                backgroundColor: const Color(0xFF1E7E34),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                duration: const Duration(seconds: 2),
+                              ));
+                            }
                           },
                           onLiveStatus: () {
                             Navigator.push(
@@ -488,7 +498,17 @@ class _HubScreenState extends State<HubScreen> {
                           guardians: guardians,
                           onInviteGuardian: () async {
                             final sent = await showInviteDialog(context, role: 'guardian');
-                            if (sent == true && mounted) _loadData();
+                            if (!mounted) return;
+                            if (sent == true) {
+                              _loadData();
+                              ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                                content: const Text('Invitation sent!'),
+                                backgroundColor: const Color(0xFF1E7E34),
+                                behavior: SnackBarBehavior.floating,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                                duration: const Duration(seconds: 2),
+                              ));
+                            }
                           },
                           onRemoveGuardian: (g) async {
                             final id = g['relationship_id'];

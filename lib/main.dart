@@ -37,7 +37,6 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
       fullScreenIntent: true,
       playSound: true,
       enableVibration: true,
-      sound: RawResourceAndroidNotificationSound('alarm'),
       category: AndroidNotificationCategory.alarm,
     );
 
