@@ -113,7 +113,7 @@ class _HubScreenState extends State<HubScreen> {
       setState(() {
         userData = user;
         statusData = status;
-        _isPro = isPro;
+        _isPro = isPro || (user?['is_pro'] == true) || (user?['is_pro'] == 1);
         userName = user?['name'] ?? 'Protected user';
         hasGuardian = user?['has_guardian'] == true;
         totalSeconds = status?['total_seconds'] ?? 86400;

@@ -2,7 +2,7 @@ name: lastwish
 description: "LastWish mobile app"
 publish_to: 'none'
 
-version: 1.0.11+12
+version: 1.0.13+14
 
 environment:
   sdk: ^3.11.1
