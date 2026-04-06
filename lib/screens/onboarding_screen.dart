@@ -1,6 +1,9 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:geolocator/geolocator.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:url_launcher/url_launcher.dart';
 import '../services/api_service.dart';
 import 'hub/hub_screen.dart';
 
@@ -13,12 +16,15 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
-  int _step = 0;               // 0 = role pick, 1 = invite, 2 = will (protected only), 3 = done
+  int _step = 0;               // 0 = role pick, 1 = invite, 2 = will (protected only), 3 = permissions, 4 = done
   String? _role;               // 'guardian' or 'protected'
   bool _sending = false;
   bool _sent = false;
   bool _savingWill = false;
   String? _error;
+  bool _notifGranted = false;
+  bool _locationGranted = false;
+  bool _backgroundGranted = false;
   final _emailCtrl = TextEditingController();
   final _willTextCtrl = TextEditingController();
   int _willDays = 7;
@@ -75,9 +81,39 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       await Future.delayed(const Duration(milliseconds: 600));
       // Protected users get the will step; guardians go straight to done
       _nextStep(_role == 'protected' ? 2 : 3);
+      if (_role != 'protected') _checkPermissions();
     } else {
       setState(() => _error = result['message']?.toString() ?? 'Failed to send invitation.');
     }
+  }
+
+  Future<void> _checkPermissions() async {
+    final notif = await FirebaseMessaging.instance.getNotificationSettings();
+    final loc = await Geolocator.checkPermission();
+    if (mounted) {
+      setState(() {
+        _notifGranted = notif.authorizationStatus == AuthorizationStatus.authorized;
+        _locationGranted = loc == LocationPermission.whileInUse || loc == LocationPermission.always;
+        _backgroundGranted = loc == LocationPermission.always;
+      });
+    }
+  }
+
+  Future<void> _requestNotifications() async {
+    await FirebaseMessaging.instance.requestPermission();
+    await _checkPermissions();
+  }
+
+  Future<void> _requestLocation() async {
+    LocationPermission perm = await Geolocator.checkPermission();
+    if (perm == LocationPermission.denied) {
+      perm = await Geolocator.requestPermission();
+    }
+    await _checkPermissions();
+  }
+
+  void _openAppSettings() {
+    Geolocator.openAppSettings();
   }
 
   Future<void> _finish() async {
@@ -124,6 +160,8 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       case 2:
         return _buildWillStep();
       case 3:
+        return _buildPermissionsStep();
+      case 4:
         return _buildDoneStep();
       default:
         return const SizedBox.shrink();
@@ -349,7 +387,14 @@ class _OnboardingScreenState extends State<OnboardingScreen>
           // Skip
           Center(
             child: TextButton(
-              onPressed: () => _role == 'protected' ? _nextStep(2) : _finish(),
+              onPressed: () async {
+                if (_role == 'protected') {
+                  _nextStep(2);
+                } else {
+                  await _checkPermissions();
+                  _nextStep(3);
+                }
+              },
               child: Text(
                 'Skip, I\'ll do this later',
                 style: TextStyle(
@@ -463,6 +508,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   await ApiService.saveWill(willText: text, willDays: _willDays);
                   setState(() => _savingWill = false);
                 }
+                await _checkPermissions();
                 _nextStep(3);
               },
               style: ElevatedButton.styleFrom(
@@ -483,7 +529,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
           Center(
             child: TextButton(
-              onPressed: () => _nextStep(3),
+              onPressed: () async {
+                await _checkPermissions();
+                _nextStep(3);
+              },
               child: Text(
                 'Skip for now',
                 style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 13),
@@ -547,12 +596,111 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     );
   }
 
-  // ── STEP 2: done ──────────────────────────────────────────────────────────
+  // ── STEP 3: permissions ───────────────────────────────────────────────────
+
+  Widget _buildPermissionsStep() {
+    final isGuardian = _role == 'guardian';
+    final totalSteps = isGuardian ? 3 : 4;
+    final accentColor = const Color(0xFF9B7FE4);
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          GestureDetector(
+            onTap: () => _nextStep(_role == 'protected' ? 2 : 1),
+            child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.5), size: 20),
+          ),
+          const SizedBox(height: 28),
+          _StepDots(current: totalSteps - 1, total: totalSteps),
+          const SizedBox(height: 28),
+
+          Row(children: [
+            Container(
+              width: 46, height: 46,
+              decoration: BoxDecoration(
+                color: accentColor.withOpacity(0.18),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(color: accentColor.withOpacity(0.35)),
+              ),
+              child: const Icon(Icons.security_outlined, color: Color(0xFF9B7FE4), size: 22),
+            ),
+            const SizedBox(width: 14),
+            const Text('App Permissions', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+          ]),
+          const SizedBox(height: 12),
+          Text(
+            'LastWish needs these permissions to keep you and your loved ones safe.',
+            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.5, height: 1.55),
+          ),
+          const SizedBox(height: 28),
+
+          // Notifications
+          _PermissionRow(
+            icon: Icons.notifications_outlined,
+            title: 'Notifications',
+            description: 'Receive alerts when someone misses a check-in or sends a Ring.',
+            granted: _notifGranted,
+            onGrant: _notifGranted ? null : _requestNotifications,
+          ),
+          const SizedBox(height: 12),
+
+          // Location while in use
+          _PermissionRow(
+            icon: Icons.location_on_outlined,
+            title: 'Location',
+            description: 'Share your location when you check in.',
+            granted: _locationGranted,
+            onGrant: _locationGranted ? null : _requestLocation,
+          ),
+          const SizedBox(height: 12),
+
+          // Background location
+          _PermissionRow(
+            icon: Icons.location_searching,
+            title: 'Background Location',
+            description: 'Required for Live Locate — allows guardians to request your location even when the app is closed.\n\nTap "Open Settings", then select Location → "Allow all the time".',
+            granted: _backgroundGranted,
+            onGrant: _openAppSettings,
+            buttonLabel: _backgroundGranted ? null : 'Open Settings',
+            isPro: true,
+          ),
+
+          const Spacer(),
+
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () => _nextStep(4),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: accentColor,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: const Text('Continue', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+          const SizedBox(height: 12),
+          Center(
+            child: TextButton(
+              onPressed: () => _nextStep(4),
+              child: Text('Skip for now', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 13)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── STEP 4: done ──────────────────────────────────────────────────────────
 
   Widget _buildDoneStep() {
     final isGuardian = _role == 'guardian';
     final accentColor = isGuardian ? const Color(0xFF4C9DFF) : const Color(0xFF9D4CFF);
-    final totalSteps = isGuardian ? 2 : 3;
+    final totalSteps = isGuardian ? 3 : 4;
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
@@ -747,10 +895,114 @@ class _RoleCard extends StatelessWidget {
   }
 }
 
+class _PermissionRow extends StatelessWidget {
+  final IconData icon;
+  final String title;
+  final String description;
+  final bool granted;
+  final VoidCallback? onGrant;
+  final String? buttonLabel;
+  final bool isPro;
+
+  const _PermissionRow({
+    required this.icon,
+    required this.title,
+    required this.description,
+    required this.granted,
+    this.onGrant,
+    this.buttonLabel,
+    this.isPro = false,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ClipRRect(
+      borderRadius: BorderRadius.circular(14),
+      child: BackdropFilter(
+        filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            color: granted
+                ? const Color(0xFF2ECC71).withOpacity(0.08)
+                : Colors.white.withOpacity(0.06),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: granted
+                  ? const Color(0xFF2ECC71).withOpacity(0.3)
+                  : Colors.white.withOpacity(0.12),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Icon(icon, color: granted ? const Color(0xFF2ECC71) : Colors.white54, size: 20),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(children: [
+                      Text(title, style: TextStyle(
+                        color: granted ? const Color(0xFF2ECC71) : Colors.white,
+                        fontSize: 14, fontWeight: FontWeight.w600,
+                      )),
+                      if (isPro) ...[
+                        const SizedBox(width: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFFFC857).withOpacity(0.15),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Text('PRO', style: TextStyle(color: Color(0xFFFFC857), fontSize: 9, fontWeight: FontWeight.w700)),
+                        ),
+                      ],
+                    ]),
+                    const SizedBox(height: 4),
+                    Text(description, style: TextStyle(color: Colors.white.withOpacity(0.45), fontSize: 12, height: 1.5)),
+                    if (!granted && onGrant != null) ...[
+                      const SizedBox(height: 10),
+                      GestureDetector(
+                        onTap: onGrant,
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF9B7FE4).withOpacity(0.2),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.4)),
+                          ),
+                          child: Text(
+                            buttonLabel ?? 'Allow',
+                            style: const TextStyle(color: Color(0xFF9B7FE4), fontSize: 12, fontWeight: FontWeight.w600),
+                          ),
+                        ),
+                      ),
+                    ],
+                    if (granted) ...[
+                      const SizedBox(height: 6),
+                      Row(children: [
+                        const Icon(Icons.check_circle_outline, color: Color(0xFF2ECC71), size: 13),
+                        const SizedBox(width: 4),
+                        Text('Granted', style: TextStyle(color: const Color(0xFF2ECC71).withOpacity(0.8), fontSize: 11)),
+                      ]),
+                    ],
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _StepDots extends StatelessWidget {
   final int current;
   final int total;
-  const _StepDots({required this.current, this.total = 2});
+  final bool isLast;
+  const _StepDots({required this.current, this.total = 2, this.isLast = false});
 
   @override
   Widget build(BuildContext context) {

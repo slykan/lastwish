@@ -495,47 +495,49 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
           // ── Action buttons ──
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
+            child: Column(
               children: [
-                _ActionButton(
-                  icon: Icons.close,
-                  label: 'Remove',
-                  color: const Color(0xFFFF5E5E),
-                  onTap: widget.onRemove,
+                Row(
+                  children: [
+                    _ActionButton(
+                      icon: Icons.close,
+                      label: 'Remove',
+                      color: const Color(0xFFFF5E5E),
+                      onTap: widget.onRemove,
+                    ),
+                    const SizedBox(width: 8),
+                    _ActionButton(
+                      icon: _remindLoading ? Icons.hourglass_top : Icons.notifications_outlined,
+                      label: 'Remind',
+                      color: const Color(0xFF5BFF6A),
+                      onTap: _remindLoading ? null : _doRemind,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                _ActionButton(
-                  icon: _remindLoading
-                      ? Icons.hourglass_top
-                      : Icons.notifications_outlined,
-                  label: 'Remind',
-                  color: const Color(0xFF5BFF6A),
-                  onTap: _remindLoading ? null : _doRemind,
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    _ActionButton(
+                      icon: Icons.history,
+                      label: 'History',
+                      color: Colors.white60,
+                      trailing: _showHistory ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      onTap: () async {
+                        setState(() => _showHistory = !_showHistory);
+                        if (_showHistory && _history.isEmpty) {
+                          await _loadHistory();
+                        }
+                      },
+                    ),
+                    const SizedBox(width: 8),
+                    _ActionButton(
+                      icon: _locateLoading ? Icons.hourglass_top : Icons.location_on_outlined,
+                      label: 'Live locate',
+                      color: const Color(0xFFFFC857),
+                      onTap: _locateLoading ? null : _doLocate,
+                    ),
+                  ],
                 ),
-                const SizedBox(width: 8),
-                _ActionButton(
-                  icon: Icons.history,
-                  label: 'History',
-                  color: Colors.white60,
-                  trailing: _showHistory
-                              ? Icons.keyboard_arrow_up
-                              : Icons.keyboard_arrow_down,
-                  onTap: () async {
-                    setState(() => _showHistory = !_showHistory);
-                    if (_showHistory && _history.isEmpty) {
-                      await _loadHistory();
-                    }
-                  },
-                ),
-                if (widget.onLocate != null) ...[
-                  const SizedBox(width: 8),
-                  _ActionButton(
-                    icon: _locateLoading ? Icons.hourglass_top : Icons.location_on_outlined,
-                    label: 'Locate',
-                    color: const Color(0xFFFFC857),
-                    onTap: _locateLoading ? null : _doLocate,
-                  ),
-                ],
               ],
             ),
           ),
