@@ -223,6 +223,23 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
   }
 
   @override
+  void didUpdateWidget(_PersonDetailCard oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final newLat = double.tryParse(widget.person['latitude']?.toString() ?? '');
+    final newLng = double.tryParse(widget.person['longitude']?.toString() ?? '');
+    final oldLat = double.tryParse(oldWidget.person['latitude']?.toString() ?? '');
+    final oldLng = double.tryParse(oldWidget.person['longitude']?.toString() ?? '');
+    if (newLat != null && newLng != null && (newLat != oldLat || newLng != oldLng)) {
+      final newPoint = LatLng(newLat, newLng);
+      setState(() {
+        _activeMapPoint = newPoint;
+        _activeMapLabel = widget.person['last_checkin_time']?.toString() ?? '';
+      });
+      _mapController.move(newPoint, 14);
+    }
+  }
+
+  @override
   void dispose() {
     _ticker?.cancel();
     super.dispose();
@@ -263,6 +280,11 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
       widget.onLocate!();
       if (!mounted) return;
       setState(() { _locateLoading = false; _locateResult = true; });
+      // Auto-refresh after 5s to pick up fresh location from protected device
+      Future.delayed(const Duration(seconds: 5), () async {
+        if (!mounted) return;
+        await _refresh();
+      });
     } catch (_) {
       if (!mounted) return;
       setState(() { _locateLoading = false; _locateResult = false; });

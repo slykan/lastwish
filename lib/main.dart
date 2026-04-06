@@ -24,7 +24,7 @@ Future<void> _sendLocationToServer() async {
     );
 
     final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString('auth_token');
+    final token = prefs.getString('token');
     if (token == null) return;
 
     await http.post(
