@@ -133,6 +133,7 @@ class _ProtectedDetailScreenState extends State<ProtectedDetailScreen> {
                     onLocate: widget.onLocate != null
                         ? () => widget.onLocate!(_people[index])
                         : null,
+                    onRefresh: _refresh,
                   );
                 },
               ),
@@ -174,6 +175,7 @@ class _PersonDetailCard extends StatefulWidget {
   final VoidCallback? onRemind;
   final VoidCallback? onRemove;
   final VoidCallback? onLocate;
+  final Future<void> Function()? onRefresh;
 
   const _PersonDetailCard({
     required this.person,
@@ -181,6 +183,7 @@ class _PersonDetailCard extends StatefulWidget {
     this.onRemind,
     this.onRemove,
     this.onLocate,
+    this.onRefresh,
   });
 
   @override
@@ -283,7 +286,7 @@ class _PersonDetailCardState extends State<_PersonDetailCard> {
       // Auto-refresh after 5s to pick up fresh location from protected device
       Future.delayed(const Duration(seconds: 5), () async {
         if (!mounted) return;
-        await _refresh();
+        await widget.onRefresh?.call();
       });
     } catch (_) {
       if (!mounted) return;
