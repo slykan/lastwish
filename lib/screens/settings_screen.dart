@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geolocator/geolocator.dart';
 import '../services/api_service.dart';
 
 class SettingsScreen extends StatefulWidget {
@@ -100,6 +101,24 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   ),
                   const SizedBox(height: 20),
 
+                  // ── Permissions info ──
+                  _buildInfoCard(
+                    icon: Icons.location_on_outlined,
+                    title: 'Background Location',
+                    body: 'For Live Locate to work when the app is in the background, go to Settings → App → Location and select "Allow all the time".',
+                    onTap: () => Geolocator.openAppSettings(),
+                    buttonLabel: 'Open App Settings',
+                  ),
+                  const SizedBox(height: 12),
+                  _buildInfoCard(
+                    icon: Icons.battery_saver_outlined,
+                    title: 'Battery Optimisation',
+                    body: 'To ensure check-in reminders and location requests work reliably, disable battery optimisation for LastWish in your phone\'s settings.',
+                    onTap: () => Geolocator.openLocationSettings(),
+                    buttonLabel: 'Open Settings',
+                  ),
+                  const SizedBox(height: 20),
+
                   // ── Email ──
                   _buildToggleCard(
                     icon: Icons.email_outlined,
@@ -190,6 +209,70 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 ],
               ),
             ),
+    );
+  }
+
+  Widget _buildInfoCard({
+    required IconData icon,
+    required String title,
+    required String body,
+    VoidCallback? onTap,
+    String? buttonLabel,
+  }) {
+    return Container(
+      width: double.infinity,
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A2E),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: Colors.white.withOpacity(0.08)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, color: const Color(0xFF9B7FE4), size: 18),
+              const SizedBox(width: 10),
+              Text(
+                title,
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            body,
+            style: const TextStyle(color: Colors.white54, fontSize: 12.5, height: 1.5),
+          ),
+          if (onTap != null && buttonLabel != null) ...[
+            const SizedBox(height: 10),
+            GestureDetector(
+              onTap: onTap,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9B7FE4).withOpacity(0.15),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.4)),
+                ),
+                child: Text(
+                  buttonLabel,
+                  style: const TextStyle(
+                    color: Color(0xFF9B7FE4),
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
     );
   }
 

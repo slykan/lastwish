@@ -222,28 +222,18 @@ class _PersonCardState extends State<_PersonCard> {
   }
 
   Future<void> _openLocation() async {
-    final userId = widget.person['id'];
-    if (userId == null) return;
     setState(() => _locating = true);
     try {
-      final history = await ApiService.fetchCheckinHistory(userId as int);
+      // Koristi zadnju poznatu lokaciju iz person objekta (check-in ili on_request)
+      final lat = widget.person['latitude'] ?? widget.person['lat'];
+      final lng = widget.person['longitude'] ?? widget.person['lng'];
       if (!mounted) return;
-      if (history.isEmpty) {
+      if (lat == null || lng == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('No location data available.'), backgroundColor: Colors.orange),
         );
         return;
       }
-      final latest = history.first;
-      final lat = latest['lat'] ?? latest['latitude'];
-      final lng = latest['lng'] ?? latest['longitude'];
-      if (lat == null || lng == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Location not available for this check-in.'), backgroundColor: Colors.orange),
-        );
-        return;
-      }
-      final name = Uri.encodeComponent(widget.person['name'] ?? 'Location');
       final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
       if (await canLaunchUrl(uri)) {
         await launchUrl(uri, mode: LaunchMode.externalApplication);

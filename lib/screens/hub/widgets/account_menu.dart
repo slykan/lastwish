@@ -7,6 +7,7 @@ class AccountMenu extends StatelessWidget {
   final VoidCallback? onProfile;
   final VoidCallback? onSettings;
   final VoidCallback? onIntervals;
+  final VoidCallback? onWill;
   final VoidCallback? onAbout;
   final VoidCallback? onLogout;
 
@@ -18,6 +19,7 @@ class AccountMenu extends StatelessWidget {
     this.onProfile,
     this.onSettings,
     this.onIntervals,
+    this.onWill,
     this.onAbout,
     this.onLogout,
   });
@@ -57,6 +59,11 @@ class AccountMenu extends StatelessWidget {
               icon: Icons.access_alarm,
               text: 'Intervals',
               onTap: onIntervals,
+            ),
+            _menuItem(
+              icon: Icons.edit_note_outlined,
+              text: 'Will',
+              onTap: onWill,
             ),
             _menuItem(
               icon: Icons.info_outline,

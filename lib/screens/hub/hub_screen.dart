@@ -46,6 +46,7 @@ class _HubScreenState extends State<HubScreen> {
 
   Map<String, dynamic>? userData;
   Map<String, dynamic>? statusData;
+  String? willText;
   List<Map<String, dynamic>> protectedPeople = [];
 
   List<Map<String, dynamic>> guardians = [];
@@ -105,6 +106,7 @@ class _HubScreenState extends State<HubScreen> {
       final user = await ApiService.getUser();
       final status = await ApiService.getStatus();
       final isPro = await RevenueCatService.isPro();
+      final settings = await ApiService.fetchSettings();
 
       final guardiansApi = await ApiService.fetchGuardians();
       final invitesApi = await ApiService.fetchInvites();
@@ -113,6 +115,7 @@ class _HubScreenState extends State<HubScreen> {
       setState(() {
         userData = user;
         statusData = status;
+        willText = (settings?['will_text'] ?? '').toString().trim().isEmpty ? null : settings?['will_text']?.toString().trim();
         _isPro = isPro || (user?['is_pro'] == true) || (user?['is_pro'] == 1);
         userName = user?['name'] ?? 'Protected user';
         hasGuardian = user?['has_guardian'] == true;
@@ -257,6 +260,12 @@ class _HubScreenState extends State<HubScreen> {
                 Navigator.of(ctx).pop();
                 Navigator.of(context).push(
                   MaterialPageRoute(builder: (_) => const IntervalsScreen()),
+                );
+              },
+            onWill: () {
+                Navigator.of(ctx).pop();
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => const ProfileScreen()),
                 );
               },
             onAbout: () {
@@ -404,7 +413,16 @@ class _HubScreenState extends State<HubScreen> {
                           )
                         else
                           _NoGuardianCard(),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 16),
+                        _WillCard(
+                          willText: willText,
+                          onTap: () {
+                            Navigator.of(context).push(
+                              MaterialPageRoute(builder: (_) => const ProfileScreen()),
+                            );
+                          },
+                        ),
+                        const SizedBox(height: 16),
                         QuickStats(
                           user: userData,
                           status: statusData,
@@ -460,6 +478,10 @@ class _HubScreenState extends State<HubScreen> {
                                     final id = person['id'];
                                     if (id == null) return;
                                     await ApiService.requestLocation(id);
+                                    // Auto-refresh nakon 6s da pokupe novu lokaciju
+                                    Future.delayed(const Duration(seconds: 6), () {
+                                      if (mounted) _loadData();
+                                    });
                                   },
                                 ),
                               ),
@@ -511,6 +533,9 @@ class _HubScreenState extends State<HubScreen> {
                                     final id = person['id'];
                                     if (id == null) return;
                                     await ApiService.requestLocation(id);
+                                    Future.delayed(const Duration(seconds: 6), () {
+                                      if (mounted) _loadData();
+                                    });
                                   },
                                 ),
                               ),
@@ -608,6 +633,125 @@ class _HubScreenState extends State<HubScreen> {
           ),
         ],
       ),
+    );
+  }
+}
+
+class _WillCard extends StatefulWidget {
+  final String? willText;
+  final VoidCallback? onTap;
+
+  const _WillCard({this.willText, this.onTap});
+
+  @override
+  State<_WillCard> createState() => _WillCardState();
+}
+
+class _WillCardState extends State<_WillCard>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _pulse;
+  late Animation<double> _glow;
+
+  @override
+  void initState() {
+    super.initState();
+    _pulse = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 2200),
+    )..repeat(reverse: true);
+    _glow = Tween<double>(begin: 0.3, end: 0.7).animate(
+      CurvedAnimation(parent: _pulse, curve: Curves.easeInOut),
+    );
+  }
+
+  @override
+  void dispose() {
+    _pulse.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final hasWill = widget.willText != null && widget.willText!.isNotEmpty;
+    return AnimatedBuilder(
+      animation: _glow,
+      builder: (context, _) {
+        return GestureDetector(
+          onTap: widget.onTap,
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 18),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  const Color(0xFF3D2270).withOpacity(0.55),
+                  const Color(0xFF1A0E3A).withOpacity(0.55),
+                ],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(
+                color: const Color(0xFF9B7FE4).withOpacity(_glow.value),
+                width: 1.5,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF9B7FE4).withOpacity(_glow.value * 0.4),
+                  blurRadius: 20,
+                  spreadRadius: 1,
+                ),
+              ],
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.center,
+              children: [
+                Container(
+                  width: 46,
+                  height: 46,
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF9B7FE4).withOpacity(0.2),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.45)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: const Color(0xFF9B7FE4).withOpacity(_glow.value * 0.5),
+                        blurRadius: 10,
+                      ),
+                    ],
+                  ),
+                  child: const Icon(Icons.edit_note_outlined, color: Colors.white, size: 24),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text(
+                    hasWill
+                        ? widget.willText!.length > 80
+                            ? '${widget.willText!.substring(0, 80)}…'
+                            : widget.willText!
+                        : 'Messages to loved ones in case something happens to me.',
+                    style: TextStyle(
+                      color: hasWill
+                          ? Colors.white.withOpacity(0.88)
+                          : Colors.white.withOpacity(0.75),
+                      fontSize: 13.5,
+                      height: 1.5,
+                      fontStyle: hasWill ? FontStyle.normal : FontStyle.italic,
+                      fontWeight: hasWill ? FontWeight.w500 : FontWeight.w400,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Icon(
+                  Icons.arrow_forward_ios_rounded,
+                  size: 14,
+                  color: const Color(0xFF9B7FE4).withOpacity(0.7),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }

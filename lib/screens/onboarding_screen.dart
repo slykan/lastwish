@@ -603,95 +603,101 @@ class _OnboardingScreenState extends State<OnboardingScreen>
     final totalSteps = isGuardian ? 3 : 4;
     final accentColor = const Color(0xFF9B7FE4);
 
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          GestureDetector(
-            onTap: () => _nextStep(_role == 'protected' ? 2 : 1),
-            child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.5), size: 20),
-          ),
-          const SizedBox(height: 28),
-          _StepDots(current: totalSteps - 1, total: totalSteps),
-          const SizedBox(height: 28),
+    return Column(
+      children: [
+        Expanded(
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 32),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                GestureDetector(
+                  onTap: () => _nextStep(_role == 'protected' ? 2 : 1),
+                  child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.5), size: 20),
+                ),
+                const SizedBox(height: 28),
+                _StepDots(current: totalSteps - 1, total: totalSteps),
+                const SizedBox(height: 28),
 
-          Row(children: [
-            Container(
-              width: 46, height: 46,
-              decoration: BoxDecoration(
-                color: accentColor.withOpacity(0.18),
-                borderRadius: BorderRadius.circular(14),
-                border: Border.all(color: accentColor.withOpacity(0.35)),
+                Row(children: [
+                  Container(
+                    width: 46, height: 46,
+                    decoration: BoxDecoration(
+                      color: accentColor.withOpacity(0.18),
+                      borderRadius: BorderRadius.circular(14),
+                      border: Border.all(color: accentColor.withOpacity(0.35)),
+                    ),
+                    child: const Icon(Icons.security_outlined, color: Color(0xFF9B7FE4), size: 22),
+                  ),
+                  const SizedBox(width: 14),
+                  const Text('App Permissions', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
+                ]),
+                const SizedBox(height: 12),
+                Text(
+                  'LastWish needs these permissions to keep you and your loved ones safe.',
+                  style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.5, height: 1.55),
+                ),
+                const SizedBox(height: 28),
+
+                _PermissionRow(
+                  icon: Icons.notifications_outlined,
+                  title: 'Notifications',
+                  description: 'Receive alerts when someone misses a check-in or sends a Ring.',
+                  granted: _notifGranted,
+                  onGrant: _notifGranted ? null : _requestNotifications,
+                ),
+                const SizedBox(height: 12),
+
+                _PermissionRow(
+                  icon: Icons.location_on_outlined,
+                  title: 'Location',
+                  description: 'Share your location when you check in.',
+                  granted: _locationGranted,
+                  onGrant: _locationGranted ? null : _requestLocation,
+                ),
+                const SizedBox(height: 12),
+
+                _PermissionRow(
+                  icon: Icons.location_searching,
+                  title: 'Background Location',
+                  description: 'Required for Live Locate — allows guardians to request your location even when the app is closed.\n\nTap "Open Settings", then select Location → "Allow all the time".',
+                  granted: _backgroundGranted,
+                  onGrant: _openAppSettings,
+                  buttonLabel: _backgroundGranted ? null : 'Open Settings',
+                  isPro: true,
+                ),
+                const SizedBox(height: 32),
+              ],
+            ),
+          ),
+        ),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(28, 0, 28, 24),
+          child: Column(
+            children: [
+              SizedBox(
+                width: double.infinity,
+                height: 52,
+                child: ElevatedButton(
+                  onPressed: () => _nextStep(4),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: accentColor,
+                    foregroundColor: Colors.white,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Continue', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+                ),
               ),
-              child: const Icon(Icons.security_outlined, color: Color(0xFF9B7FE4), size: 22),
-            ),
-            const SizedBox(width: 14),
-            const Text('App Permissions', style: TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.w700)),
-          ]),
-          const SizedBox(height: 12),
-          Text(
-            'LastWish needs these permissions to keep you and your loved ones safe.',
-            style: TextStyle(color: Colors.white.withOpacity(0.5), fontSize: 13.5, height: 1.55),
-          ),
-          const SizedBox(height: 28),
-
-          // Notifications
-          _PermissionRow(
-            icon: Icons.notifications_outlined,
-            title: 'Notifications',
-            description: 'Receive alerts when someone misses a check-in or sends a Ring.',
-            granted: _notifGranted,
-            onGrant: _notifGranted ? null : _requestNotifications,
-          ),
-          const SizedBox(height: 12),
-
-          // Location while in use
-          _PermissionRow(
-            icon: Icons.location_on_outlined,
-            title: 'Location',
-            description: 'Share your location when you check in.',
-            granted: _locationGranted,
-            onGrant: _locationGranted ? null : _requestLocation,
-          ),
-          const SizedBox(height: 12),
-
-          // Background location
-          _PermissionRow(
-            icon: Icons.location_searching,
-            title: 'Background Location',
-            description: 'Required for Live Locate — allows guardians to request your location even when the app is closed.\n\nTap "Open Settings", then select Location → "Allow all the time".',
-            granted: _backgroundGranted,
-            onGrant: _openAppSettings,
-            buttonLabel: _backgroundGranted ? null : 'Open Settings',
-            isPro: true,
-          ),
-
-          const Spacer(),
-
-          SizedBox(
-            width: double.infinity,
-            height: 52,
-            child: ElevatedButton(
-              onPressed: () => _nextStep(4),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: accentColor,
-                foregroundColor: Colors.white,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                elevation: 0,
+              const SizedBox(height: 8),
+              TextButton(
+                onPressed: () => _nextStep(4),
+                child: Text('Skip for now', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 13)),
               ),
-              child: const Text('Continue', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
-            ),
+            ],
           ),
-          const SizedBox(height: 12),
-          Center(
-            child: TextButton(
-              onPressed: () => _nextStep(4),
-              child: Text('Skip for now', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 13)),
-            ),
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 

@@ -14,12 +14,6 @@ class QuickStats extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final name = user?['name'] ?? '-';
-    final city = status?['city'] ?? user?['city'];
-    final country = status?['country'] ?? user?['country'];
-    final location = [city, country].where((e) => e != null && e.toString().isNotEmpty).join(', ');
-    final locationLabel = location.isNotEmpty ? location : 'Unknown';
-    // protectedCount dolazi izvana (protectedPeople.length)
     final interval = user?['alive_interval_hours'] ?? 24;
 
     return Container(
@@ -30,18 +24,11 @@ class QuickStats extends StatelessWidget {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(color: Colors.white.withOpacity(0.15)),
       ),
-      child: GridView.count(
-        crossAxisCount: 2,
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        childAspectRatio: 2.2,
-        mainAxisSpacing: 12,
-        crossAxisSpacing: 12,
+      child: Row(
         children: [
-          _item(Icons.account_circle_outlined, 'User', name),
-          _item(Icons.supervised_user_circle_outlined, 'Protected', '$protectedCount people'),
-          _item(Icons.timer_outlined, 'Check interval', '${interval}h'),
-          _item(Icons.location_on_outlined, 'Location', locationLabel),
+          Expanded(child: _item(Icons.supervised_user_circle_outlined, 'Protected', '$protectedCount people')),
+          const SizedBox(width: 12),
+          Expanded(child: _item(Icons.timer_outlined, 'Check interval', '${interval}h')),
         ],
       ),
     );
