@@ -28,6 +28,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
 
   // Will / Oporuka fields
   final _willTextController = TextEditingController();
+  final _willExtra1Controller = TextEditingController();
+  final _willExtra2Controller = TextEditingController();
   int _willDays = 7;
 
   bool _loadingProfile = true;
@@ -64,6 +66,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     _newPasswordController.dispose();
     _confirmPasswordController.dispose();
     _willTextController.dispose();
+    _willExtra1Controller.dispose();
+    _willExtra2Controller.dispose();
     super.dispose();
   }
 
@@ -93,6 +97,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
       setState(() {
         _willTextController.text = data['will_text'] ?? '';
         _willDays = (data['will_days'] as num?)?.toInt() ?? 7;
+        _willExtra1Controller.text = data['will_extra_email_1'] ?? '';
+        _willExtra2Controller.text = data['will_extra_email_2'] ?? '';
       });
     }
   }
@@ -102,6 +108,8 @@ class _ProfileScreenState extends State<ProfileScreen> {
     final result = await ApiService.saveWill(
       willText: _willTextController.text.trim(),
       willDays: _willDays,
+      extraEmail1: _willExtra1Controller.text.trim().isEmpty ? null : _willExtra1Controller.text.trim(),
+      extraEmail2: _willExtra2Controller.text.trim().isEmpty ? null : _willExtra2Controller.text.trim(),
     );
     setState(() => _savingWill = false);
     if (!mounted) return;
@@ -382,6 +390,35 @@ class _ProfileScreenState extends State<ProfileScreen> {
     );
   }
 
+  Widget _buildEmailField(TextEditingController ctrl, String hint) {
+    return TextField(
+      controller: ctrl,
+      keyboardType: TextInputType.emailAddress,
+      autocorrect: false,
+      style: const TextStyle(color: Colors.white, fontSize: 13),
+      decoration: InputDecoration(
+        hintText: hint,
+        hintStyle: TextStyle(color: Colors.white.withOpacity(0.25), fontSize: 13),
+        prefixIcon: Icon(Icons.mail_outline, size: 18, color: Colors.white.withOpacity(0.3)),
+        filled: true,
+        fillColor: Colors.white.withOpacity(0.05),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: const Color(0xFF9B7FE4).withOpacity(0.2)),
+        ),
+        enabledBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: BorderSide(color: const Color(0xFF9B7FE4).withOpacity(0.2)),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(10),
+          borderSide: const BorderSide(color: Color(0xFF9B7FE4)),
+        ),
+      ),
+    );
+  }
+
   Widget _buildBloodTypeDropdown() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -505,6 +542,28 @@ class _ProfileScreenState extends State<ProfileScreen> {
           ),
           const SizedBox(height: 8),
           _buildWillDaysPicker(),
+
+          const SizedBox(height: 20),
+          // Extra email recipients
+          Row(
+            children: [
+              const Icon(Icons.alternate_email, size: 15, color: Color(0xFF9B7FE4)),
+              const SizedBox(width: 8),
+              Text(
+                'Also send will to:',
+                style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 13),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Optional. Up to 2 additional recipients (family, lawyer, etc.)',
+            style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 11),
+          ),
+          const SizedBox(height: 10),
+          _buildEmailField(_willExtra1Controller, 'Additional email 1'),
+          const SizedBox(height: 8),
+          _buildEmailField(_willExtra2Controller, 'Additional email 2'),
 
           if (_willError != null) ...[
             const SizedBox(height: 12),

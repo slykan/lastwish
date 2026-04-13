@@ -442,16 +442,21 @@ class ApiService {
   static Future<Map<String, dynamic>> saveWill({
     required String willText,
     required int willDays,
+    String? extraEmail1,
+    String? extraEmail2,
   }) async {
     try {
+      final body = <String, dynamic>{
+        'will_text': willText,
+        'will_days': willDays,
+        'will_extra_email_1': extraEmail1 ?? '',
+        'will_extra_email_2': extraEmail2 ?? '',
+      };
       final response = await http
           .put(
             Uri.parse("$baseUrl/settings"),
             headers: await getHeaders(),
-            body: jsonEncode({
-              'will_text': willText,
-              'will_days': willDays,
-            }),
+            body: jsonEncode(body),
           )
           .timeout(const Duration(seconds: 10));
       final decoded = jsonDecode(response.body);
