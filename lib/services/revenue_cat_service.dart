@@ -4,7 +4,7 @@ import 'package:purchases_flutter/purchases_flutter.dart';
 import 'api_service.dart';
 
 class RevenueCatService {
-  static const _androidKey = 'test_bogdmUNCvQUsonUeQUKmkXOIYAH';
+  static const _androidKey = 'goog_WRXqiydNgOjqkmqvhWLaUoLLmPg';
   // iOS key — dodaj kad budeš radio iOS build
   static const _iosKey = 'PASTE_IOS_KEY_HERE';
 

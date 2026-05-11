@@ -22,6 +22,7 @@ import 'package:lastwish/screens/intervals_screen.dart';
 import 'package:lastwish/screens/about_screen.dart';
 import 'package:lastwish/services/revenue_cat_service.dart';
 import 'package:lastwish/widgets/pro_upgrade_modal.dart';
+import 'package:geolocator/geolocator.dart';
 
 class HubScreen extends StatefulWidget {
   const HubScreen({super.key});
@@ -30,7 +31,7 @@ class HubScreen extends StatefulWidget {
   State<HubScreen> createState() => _HubScreenState();
 }
 
-class _HubScreenState extends State<HubScreen> {
+class _HubScreenState extends State<HubScreen> with WidgetsBindingObserver {
   Timer? _ticker;
 
   int totalSeconds = 0;
@@ -55,9 +56,17 @@ class _HubScreenState extends State<HubScreen> {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _requestNotificationPermission();
     _listenForegroundNotifications();
     _loadData();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _loadData();
+    }
   }
 
   Future<void> _requestNotificationPermission() async {
@@ -97,6 +106,7 @@ class _HubScreenState extends State<HubScreen> {
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _ticker?.cancel();
     super.dispose();
   }
@@ -179,8 +189,65 @@ class _HubScreenState extends State<HubScreen> {
     return '${secs}s';
   }
 
+  Future<bool> _showLocationDisclosure() async {
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('location_disclosure_shown') ?? false;
+    if (shown) return true;
+
+    if (!mounted) return false;
+
+    final agreed = await showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF1A1A2E),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: const [
+            Icon(Icons.location_on, color: Color(0xFF7C3AED), size: 24),
+            SizedBox(width: 8),
+            Text('Location Access', style: TextStyle(color: Colors.white, fontSize: 18)),
+          ],
+        ),
+        content: const Text(
+          'LastWish uses your location during check-in to share your last known position with your Guardian contacts if you miss a check-in.\n\n'
+          'This helps keep you safe and ensures your Guardians can find you if needed.\n\n'
+          'Location is only recorded when you check in and is never used for advertising.',
+          style: TextStyle(color: Color(0xFFB0B0C8), height: 1.5),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Decline', style: TextStyle(color: Color(0xFF888888))),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFF7C3AED),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            ),
+            onPressed: () => Navigator.of(ctx).pop(true),
+            child: const Text('Allow', style: TextStyle(color: Colors.white)),
+          ),
+        ],
+      ),
+    );
+
+    if (agreed == true) {
+      await prefs.setBool('location_disclosure_shown', true);
+      return true;
+    }
+    return false;
+  }
+
   Future<void> onCheckInPressed() async {
     if (isCheckingIn) return;
+
+    final permission = await Geolocator.checkPermission();
+    if (permission == LocationPermission.denied || permission == LocationPermission.deniedForever) {
+      final agreed = await _showLocationDisclosure();
+      if (!agreed) return;
+    }
+
     setState(() => isCheckingIn = true);
 
     try {
