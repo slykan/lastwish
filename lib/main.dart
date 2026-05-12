@@ -116,15 +116,6 @@ void main() async {
   FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
   await FirebaseMessaging.instance.requestPermission();
 
-  // Request location permission
-  LocationPermission locPerm = await Geolocator.checkPermission();
-  if (locPerm == LocationPermission.denied) {
-    locPerm = await Geolocator.requestPermission();
-  }
-  if (locPerm == LocationPermission.whileInUse) {
-    await Geolocator.requestPermission();
-  }
-
   // Foreground FCM handler
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
     final type = message.data['type'];

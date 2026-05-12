@@ -105,6 +105,34 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   }
 
   Future<void> _requestLocation() async {
+    final agreed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: const Color(0xFF171225),
+        title: const Text(
+          'Location access',
+          style: TextStyle(color: Colors.white),
+        ),
+        content: Text(
+          'LastWish uses your location when you check in so your selected guardians can see your last known position if you miss a check-in.\n\n'
+          'Your location is shared only with your guardians and is never used for advertising.',
+          style: const TextStyle(color: Color(0xBFFFFFFF), height: 1.45),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('Not now', style: TextStyle(color: Color(0x8CFFFFFF))),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Continue', style: TextStyle(color: Color(0xFF9B7FE4))),
+          ),
+        ],
+      ),
+    );
+
+    if (agreed != true) return;
+
     LocationPermission perm = await Geolocator.checkPermission();
     if (perm == LocationPermission.denied) {
       perm = await Geolocator.requestPermission();
@@ -651,7 +679,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 _PermissionRow(
                   icon: Icons.location_on_outlined,
                   title: 'Location',
-                  description: 'Share your location when you check in.',
+                  description: 'Used when you check in so your selected guardians can see your last known position if you miss a check-in.',
                   granted: _locationGranted,
                   onGrant: _locationGranted ? null : _requestLocation,
                 ),
@@ -660,10 +688,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 _PermissionRow(
                   icon: Icons.location_searching,
                   title: 'Background Location',
-                  description: 'Required for Live Locate — allows guardians to request your location even when the app is closed.\n\nTap "Open Settings", then select Location → "Allow all the time".',
+                  description: 'Live Locate uses background location so your selected guardians can request your current location even when LastWish is closed or not visible.\n\nYour location is shared only with your guardians and is never used for advertising. Tap "I understand", then select Location → "Allow all the time".',
                   granted: _backgroundGranted,
                   onGrant: _openAppSettings,
-                  buttonLabel: _backgroundGranted ? null : 'Open Settings',
+                  buttonLabel: _backgroundGranted ? null : 'I understand',
                   isPro: true,
                 ),
                 const SizedBox(height: 32),
