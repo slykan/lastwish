@@ -60,6 +60,9 @@ class _HubScreenState extends State<HubScreen> with WidgetsBindingObserver {
     _requestNotificationPermission();
     _listenForegroundNotifications();
     _loadData();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _maybeShowBackgroundLocationDisclosure();
+    });
   }
 
   @override
@@ -75,6 +78,130 @@ class _HubScreenState extends State<HubScreen> with WidgetsBindingObserver {
       badge: true,
       sound: true,
     );
+  }
+
+  Future<void> _maybeShowBackgroundLocationDisclosure() async {
+    final prefs = await SharedPreferences.getInstance();
+    final shown = prefs.getBool('bg_location_disclosure_shown') ?? false;
+    if (shown || !mounted) return;
+
+    await showDialog<void>(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 40),
+        child: Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFF1A1035),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.4), width: 1.5),
+          ),
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    width: 44, height: 44,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9B7FE4).withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.location_searching, color: Color(0xFF9B7FE4), size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Text(
+                      'Background Location Access',
+                      style: TextStyle(color: Colors.white, fontSize: 17, fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'LastWish collects your location data in the background.',
+                style: TextStyle(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w600, height: 1.5),
+              ),
+              const SizedBox(height: 12),
+              Text(
+                'This means the app can access your GPS location even when LastWish is closed or not in use.',
+                style: TextStyle(color: Colors.white.withOpacity(0.65), fontSize: 13, height: 1.6),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF9B7FE4).withOpacity(0.08),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.2)),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Why we need this:',
+                      style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w600),
+                    ),
+                    const SizedBox(height: 8),
+                    Text(
+                      '• Your guardians can request your real-time location even when the app is closed\n'
+                      '• If you miss a check-in, your guardians can see your last known location\n'
+                      '• Your location is only shared with guardians you have approved',
+                      style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12.5, height: 1.7),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 16),
+              Container(
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF2ECC71).withOpacity(0.06),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: const Color(0xFF2ECC71).withOpacity(0.2)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.privacy_tip_outlined, color: const Color(0xFF2ECC71).withOpacity(0.7), size: 16),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Your location data is never sold, never used for advertising, and never shared with third parties.',
+                        style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12, height: 1.6),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: GestureDetector(
+                  onTap: () => Navigator.pop(context),
+                  child: Container(
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF9B7FE4),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Center(
+                      child: Text('I understand', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w700)),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    await prefs.setBool('bg_location_disclosure_shown', true);
   }
 
   void _listenForegroundNotifications() {
