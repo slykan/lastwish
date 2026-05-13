@@ -16,7 +16,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
-  int _step = 0;               // 0 = role pick, 1 = invite, 2 = will (protected only), 3 = permissions, 4 = done
+  int _step = 0;               // 0 = disclosure, 1 = role pick, 2 = invite, 3 = will (protected only), 4 = permissions, 5 = done
   String? _role;               // 'guardian' or 'protected'
   bool _sending = false;
   bool _sent = false;
@@ -60,7 +60,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
 
   void _selectRole(String role) async {
     _role = role;
-    await _nextStep(1);
+    await _nextStep(2);
   }
 
   Future<void> _sendInvite() async {
@@ -80,7 +80,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
       setState(() => _sent = true);
       await Future.delayed(const Duration(milliseconds: 600));
       // Protected users get the will step; guardians go straight to done
-      _nextStep(_role == 'protected' ? 2 : 3);
+      _nextStep(_role == 'protected' ? 3 : 4);
       if (_role != 'protected') _checkPermissions();
     } else {
       setState(() => _error = result['message']?.toString() ?? 'Failed to send invitation.');
@@ -328,21 +328,127 @@ class _OnboardingScreenState extends State<OnboardingScreen>
   Widget _buildStep() {
     switch (_step) {
       case 0:
-        return _buildRolePicker();
+        return _buildDisclosureStep();
       case 1:
-        return _buildInviteStep();
+        return _buildRolePicker();
       case 2:
-        return _buildWillStep();
+        return _buildInviteStep();
       case 3:
-        return _buildPermissionsStep();
+        return _buildWillStep();
       case 4:
+        return _buildPermissionsStep();
+      case 5:
         return _buildDoneStep();
       default:
         return const SizedBox.shrink();
     }
   }
 
-  // ── STEP 0: role picker ───────────────────────────────────────────────────
+  // ── STEP 0: background location disclosure ────────────────────────────────
+
+  Widget _buildDisclosureStep() {
+    return SingleChildScrollView(
+      padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SizedBox(height: 12),
+          Center(
+            child: Container(
+              width: 64, height: 64,
+              decoration: BoxDecoration(
+                color: const Color(0xFF9B7FE4).withOpacity(0.15),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.35)),
+              ),
+              child: const Icon(Icons.location_searching, color: Color(0xFF9B7FE4), size: 30),
+            ),
+          ),
+          const SizedBox(height: 24),
+          const Center(
+            child: Text(
+              'Before you continue',
+              style: TextStyle(color: Colors.white, fontSize: 22, fontWeight: FontWeight.w800),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 10),
+          Center(
+            child: Text(
+              'LastWish collects your location data in the background.',
+              style: TextStyle(color: Colors.white.withOpacity(0.75), fontSize: 14, height: 1.55),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 28),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF9B7FE4).withOpacity(0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.2)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text('What this means:', style: TextStyle(color: Colors.white.withOpacity(0.9), fontSize: 13, fontWeight: FontWeight.w600)),
+                const SizedBox(height: 10),
+                Text(
+                  '• The app can access your GPS location even when LastWish is closed or not in use\n'
+                  '• Your guardians can request your real-time location at any time\n'
+                  '• If you miss a check-in, your guardians can see your last known location',
+                  style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 13, height: 1.7),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 16),
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: const Color(0xFF2ECC71).withOpacity(0.06),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: const Color(0xFF2ECC71).withOpacity(0.2)),
+            ),
+            child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Icon(Icons.privacy_tip_outlined, color: const Color(0xFF2ECC71).withOpacity(0.7), size: 18),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    'Your location is only shared with guardians you approve. It is never sold, never used for advertising, and never shared with third parties.',
+                    style: TextStyle(color: Colors.white.withOpacity(0.55), fontSize: 12.5, height: 1.6),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 32),
+          SizedBox(
+            width: double.infinity,
+            height: 52,
+            child: ElevatedButton(
+              onPressed: () async {
+                final prefs = await SharedPreferences.getInstance();
+                await prefs.setBool('bg_location_disclosure_shown', true);
+                _nextStep(1);
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF9B7FE4),
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                elevation: 0,
+              ),
+              child: const Text('I understand, continue', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── STEP 1: role picker ───────────────────────────────────────────────────
 
   Widget _buildRolePicker() {
     return Padding(
@@ -448,7 +554,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         children: [
           // Back
           GestureDetector(
-            onTap: () => _nextStep(0),
+            onTap: () => _nextStep(1),
             child: Icon(Icons.arrow_back_ios_new_rounded,
                 color: Colors.white.withOpacity(0.5), size: 20),
           ),
@@ -563,10 +669,10 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: TextButton(
               onPressed: () async {
                 if (_role == 'protected') {
-                  _nextStep(2);
+                  _nextStep(3);
                 } else {
                   await _checkPermissions();
-                  _nextStep(3);
+                  _nextStep(4);
                 }
               },
               child: Text(
@@ -592,7 +698,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           GestureDetector(
-            onTap: () => _nextStep(1),
+            onTap: () => _nextStep(2),
             child: Icon(Icons.arrow_back_ios_new_rounded,
                 color: Colors.white.withOpacity(0.5), size: 20),
           ),
@@ -683,7 +789,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   setState(() => _savingWill = false);
                 }
                 await _checkPermissions();
-                _nextStep(3);
+                _nextStep(4);
               },
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF9D4CFF),
@@ -705,7 +811,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
             child: TextButton(
               onPressed: () async {
                 await _checkPermissions();
-                _nextStep(3);
+                _nextStep(4);
               },
               child: Text(
                 'Skip for now',
@@ -786,7 +892,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 GestureDetector(
-                  onTap: () => _nextStep(_role == 'protected' ? 2 : 1),
+                  onTap: () => _nextStep(_role == 'protected' ? 3 : 2),
                   child: Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white.withOpacity(0.5), size: 20),
                 ),
                 const SizedBox(height: 28),
@@ -853,7 +959,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () => _nextStep(4),
+                  onPressed: () => _nextStep(5),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentColor,
                     foregroundColor: Colors.white,
@@ -865,7 +971,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
               ),
               const SizedBox(height: 8),
               TextButton(
-                onPressed: () => _nextStep(4),
+                onPressed: () => _nextStep(5),
                 child: Text('Skip for now', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 13)),
               ),
             ],
