@@ -16,7 +16,7 @@ class OnboardingScreen extends StatefulWidget {
 
 class _OnboardingScreenState extends State<OnboardingScreen>
     with SingleTickerProviderStateMixin {
-  int _step = 0;               // 0 = disclosure, 1 = role pick, 2 = invite, 3 = will (protected only), 4 = permissions, 5 = done
+  int _step = 1;               // 1 = role pick, 2 = invite, 3 = will (protected only), 4 = permissions, 5 = done
   String? _role;               // 'guardian' or 'protected'
   bool _sending = false;
   bool _sent = false;

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'login_screen.dart';
 import 'hub/hub_screen.dart';
+import 'location_disclosure_screen.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -24,18 +25,23 @@ class _SplashScreenState extends State<SplashScreen> {
 
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString("token");
+    final disclosureShown = prefs.getBool('bg_location_disclosure_shown') ?? false;
 
     if (!mounted) return;
 
-    if (token != null) {
+    final Widget destination = token != null ? const HubScreen() : const LoginScreen();
+
+    if (!disclosureShown) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const HubScreen()),
+        MaterialPageRoute(
+          builder: (_) => LocationDisclosureScreen(nextScreen: destination),
+        ),
       );
     } else {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (_) => const LoginScreen()),
+        MaterialPageRoute(builder: (_) => destination),
       );
     }
   }
