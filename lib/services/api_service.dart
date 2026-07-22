@@ -554,6 +554,26 @@ class ApiService {
     }
   }
 
+  // ================= APPLE LOGIN =================
+  static Future<Map<String, dynamic>?> loginWithApple({required String idToken, String? name}) async {
+    try {
+      final response = await http.post(
+        Uri.parse("$baseUrl/auth/apple"),
+        headers: {"Content-Type": "application/json", "Accept": "application/json"},
+        body: jsonEncode({'id_token': idToken, if (name != null) 'name': name}),
+      ).timeout(const Duration(seconds: 15));
+
+      print("APPLE LOGIN STATUS: ${response.statusCode}");
+      print("APPLE LOGIN BODY: ${response.body}");
+
+      if (response.statusCode == 200) return jsonDecode(response.body);
+      return null;
+    } catch (e) {
+      print("APPLE LOGIN ERROR: $e");
+      return null;
+    }
+  }
+
   // ================= PRO STATUS SYNC =================
   static Future<void> syncProStatus({required bool isPro}) async {
     try {

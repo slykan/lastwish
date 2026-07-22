@@ -22,6 +22,7 @@ dependencies:
   flutter_ringtone_player: ^4.0.0
   purchases_flutter: ^10.4.2
   google_sign_in: ^6.2.1
+  sign_in_with_apple: ^6.1.0
   flutter_local_notifications: ^18.0.0
   package_info_plus: ^8.0.0
 

@@ -1,9 +1,11 @@
+import 'dart:io';
 import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import '../services/api_service.dart';
 import '../services/revenue_cat_service.dart';
 import '../services/google_auth_service.dart';
+import '../services/apple_auth_service.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'hub/hub_screen.dart';
 import 'onboarding_screen.dart';
@@ -23,6 +25,7 @@ class _LoginScreenState extends State<LoginScreen> {
 
   bool loading = false;
   bool _googleLoading = false;
+  bool _appleLoading = false;
 
   Future<void> _loginWithGoogle() async {
     setState(() => _googleLoading = true);
@@ -35,6 +38,21 @@ class _LoginScreenState extends State<LoginScreen> {
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text("Google sign in failed. Please try again.")),
+      );
+    }
+  }
+
+  Future<void> _loginWithApple() async {
+    setState(() => _appleLoading = true);
+    final result = await AppleAuthService.signIn();
+    if (!mounted) return;
+    setState(() => _appleLoading = false);
+
+    if (result != null && result['token'] != null) {
+      await _handleLoginSuccess(result);
+    } else {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text("Apple sign in failed. Please try again.")),
       );
     }
   }
@@ -226,6 +244,26 @@ class _LoginScreenState extends State<LoginScreen> {
                         ),
                       ),
                     ),
+
+                    if (Platform.isIOS) ...[
+                      const SizedBox(height: 12),
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          onPressed: (_appleLoading || loading) ? null : _loginWithApple,
+                          icon: _appleLoading
+                              ? const SizedBox(width: 18, height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : const Icon(Icons.apple, size: 20, color: Colors.white),
+                          label: const Text('Continue with Apple', style: TextStyle(color: Colors.white)),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            side: BorderSide(color: Colors.white.withOpacity(0.2)),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                        ),
+                      ),
+                    ],
 
                     const SizedBox(height: 16),
 
