@@ -75,6 +75,7 @@ class PeopleYouProtect extends StatelessWidget {
             Column(
                 children: people
                   .map((person) => _PersonCard(
+                    key: ValueKey(person['id'] ?? person['relationship_id']),
                     person: person,
                     onRemind: onRemind,
                     onRemove: onRemove,
@@ -118,6 +119,7 @@ class _PersonCard extends StatefulWidget {
   final Future<void> Function(Map<String, dynamic> person)? onLocate;
 
   const _PersonCard({
+    super.key,
     required this.person,
     this.onRemind,
     this.onRemove,
