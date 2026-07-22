@@ -5,8 +5,7 @@ import 'api_service.dart';
 
 class RevenueCatService {
   static const _androidKey = 'goog_WRXqiydNgOjqkmqvhWLaUoLLmPg';
-  // iOS key — dodaj kad budeš radio iOS build
-  static const _iosKey = 'PASTE_IOS_KEY_HERE';
+  static const _iosKey = 'appl_UhITQUZrSSodrbBvaqlLnGOtDKE';
 
   static bool _initialized = false;
 
