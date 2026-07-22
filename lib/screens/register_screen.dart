@@ -203,13 +203,13 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         _buildField(_emergencyNoteController, 'Emergency Note', false, maxLines: 3),
                         const SizedBox(height: 16),
 
-                        // ── OPORUKA ──
+                        // ── WILL ──
                         Row(
                           children: [
                             const Icon(Icons.article_outlined, size: 14, color: Color(0xFF9B7FE4)),
                             const SizedBox(width: 6),
                             Text(
-                              'OPORUKA',
+                              'WILL',
                               style: TextStyle(
                                 color: const Color(0xFF9B7FE4).withOpacity(0.9),
                                 fontSize: 12,
@@ -221,14 +221,14 @@ class _RegisterScreenState extends State<RegisterScreen> {
                         ),
                         const SizedBox(height: 6),
                         Text(
-                          'Neobavezno. Poruka za čuvare ako se ne javiš.',
+                          'Optional. A message for your guardians if you don\'t check in.',
                           style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
                         ),
                         const SizedBox(height: 8),
-                        _buildField(_willTextController, 'Tekst oporuke', false, maxLines: 4),
+                        _buildField(_willTextController, 'Will text', false, maxLines: 4),
                         const SizedBox(height: 10),
                         Text(
-                          'Pošalji nakon (dana):',
+                          'Send after (days):',
                           style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 12),
                         ),
                         const SizedBox(height: 6),
