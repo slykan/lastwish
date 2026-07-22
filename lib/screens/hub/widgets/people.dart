@@ -1,22 +1,26 @@
 import 'dart:async';
+import 'dart:ui' as ui;
 import 'package:flutter/material.dart';
+import 'package:flutter_map/flutter_map.dart';
+import 'package:latlong2/latlong.dart';
 import 'package:url_launcher/url_launcher.dart';
-import 'package:flutter_ringtone_player/flutter_ringtone_player.dart';
 import '../../../services/api_service.dart';
 import '../../../widgets/pro_upgrade_modal.dart';
 
 class PeopleYouProtect extends StatelessWidget {
   final List<Map<String, dynamic>>? protectedPeople;
   final VoidCallback? onAddProtected;
-  final VoidCallback? onLiveStatus;
-  final void Function(Map<String, dynamic> person)? onPersonTap;
+  final Future<void> Function(Map<String, dynamic> person)? onRemind;
+  final Future<void> Function(Map<String, dynamic> person)? onRemove;
+  final Future<void> Function(Map<String, dynamic> person)? onLocate;
 
   const PeopleYouProtect({
     super.key,
     this.protectedPeople,
     this.onAddProtected,
-    this.onLiveStatus,
-    this.onPersonTap,
+    this.onRemind,
+    this.onRemove,
+    this.onLocate,
   });
 
   @override
@@ -72,54 +76,34 @@ class PeopleYouProtect extends StatelessWidget {
                 children: people
                   .map((person) => _PersonCard(
                     person: person,
-                    onTap: onPersonTap != null ? () => onPersonTap!(person) : null,
+                    onRemind: onRemind,
+                    onRemove: onRemove,
+                    onLocate: onLocate,
                   ))
                   .toList(),
             ),
 
           const SizedBox(height: 16),
 
-          // Action buttons
-          Row(
-            children: [
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: onAddProtected,
-                  icon: const Icon(Icons.add, size: 18),
-                  label: const Text('Add protected'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.1),
-                    foregroundColor: Colors.white,
-                    side: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+          // Action button
+          SizedBox(
+            width: double.infinity,
+            child: ElevatedButton.icon(
+              onPressed: onAddProtected,
+              icon: const Icon(Icons.add, size: 18),
+              label: const Text('Add protected'),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.white.withOpacity(0.1),
+                foregroundColor: Colors.white,
+                side: BorderSide(
+                  color: Colors.white.withOpacity(0.2),
                 ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: ElevatedButton.icon(
-                  onPressed: onLiveStatus,
-                  icon: const Icon(Icons.remove_red_eye, size: 18),
-                  label: const Text('Live status'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.white.withOpacity(0.1),
-                    foregroundColor: Colors.white,
-                    side: BorderSide(
-                      color: Colors.white.withOpacity(0.2),
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                  ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(12),
                 ),
+                padding: const EdgeInsets.symmetric(vertical: 12),
               ),
-            ],
+            ),
           ),
         ],
       ),
@@ -129,11 +113,15 @@ class PeopleYouProtect extends StatelessWidget {
 
 class _PersonCard extends StatefulWidget {
   final Map<String, dynamic> person;
-  final VoidCallback? onTap;
+  final Future<void> Function(Map<String, dynamic> person)? onRemind;
+  final Future<void> Function(Map<String, dynamic> person)? onRemove;
+  final Future<void> Function(Map<String, dynamic> person)? onLocate;
 
   const _PersonCard({
     required this.person,
-    this.onTap,
+    this.onRemind,
+    this.onRemove,
+    this.onLocate,
   });
 
   @override
@@ -141,9 +129,20 @@ class _PersonCard extends StatefulWidget {
 }
 
 class _PersonCardState extends State<_PersonCard> {
+  bool _expanded = false;
   bool _showMedical = false;
-  bool _locating = false;
+  bool _showHistory = false;
   bool _ringing = false;
+  bool _locating = false;
+  bool? _locateResult;
+  bool _remindLoading = false;
+  bool? _remindResult;
+  List<dynamic> _history = [];
+  bool _loadingHistory = false;
+  int? _selectedHistoryIdx;
+  final MapController _mapController = MapController();
+  LatLng? _activeMapPoint;
+  bool _mapReady = false;
   Timer? _ticker;
   late int _remainingSeconds;
   late int _maxSeconds;
@@ -158,7 +157,6 @@ class _PersonCardState extends State<_PersonCard> {
     _remainingSeconds = ((widget.person['remaining_seconds'] ?? 0) as num).toInt();
     final aliveH = (widget.person['alive_interval_hours'] ?? 24) as num;
     _maxSeconds = (aliveH * 3600).toInt();
-    debugPrint('PERSON CARD: name=${widget.person['name']} remaining=$_remainingSeconds max=$_maxSeconds aliveH=$aliveH progress=${_maxSeconds > 0 ? _remainingSeconds / _maxSeconds : 0} raw=${widget.person}');
     _ticker?.cancel();
     _ticker = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -180,6 +178,18 @@ class _PersonCardState extends State<_PersonCard> {
     if (newRemaining != null && newRemaining != oldRemaining) {
       _ticker?.cancel();
       _initTimer();
+    }
+
+    final newLat = double.tryParse(widget.person['latitude']?.toString() ?? '');
+    final newLng = double.tryParse(widget.person['longitude']?.toString() ?? '');
+    final oldLat = double.tryParse(oldWidget.person['latitude']?.toString() ?? '');
+    final oldLng = double.tryParse(oldWidget.person['longitude']?.toString() ?? '');
+    if (newLat != null && newLng != null && (newLat != oldLat || newLng != oldLng)) {
+      final newPoint = LatLng(newLat, newLng);
+      setState(() {
+        _activeMapPoint = newPoint;
+      });
+      if (_mapReady) _mapController.move(newPoint, 14);
     }
   }
 
@@ -221,25 +231,106 @@ class _PersonCardState extends State<_PersonCard> {
     ));
   }
 
-  Future<void> _openLocation() async {
-    setState(() => _locating = true);
+  Future<void> _liveLocate() async {
+    if (_locating || widget.onLocate == null) return;
+    setState(() {
+      _expanded = true;
+      _locating = true;
+      _locateResult = null;
+    });
     try {
-      // Koristi zadnju poznatu lokaciju iz person objekta (check-in ili on_request)
-      final lat = widget.person['latitude'] ?? widget.person['lat'];
-      final lng = widget.person['longitude'] ?? widget.person['lng'];
+      await widget.onLocate!(widget.person);
       if (!mounted) return;
-      if (lat == null || lng == null) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('No location data available.'), backgroundColor: Colors.orange),
-        );
-        return;
-      }
-      final uri = Uri.parse('https://www.google.com/maps/search/?api=1&query=$lat,$lng');
-      if (await canLaunchUrl(uri)) {
-        await launchUrl(uri, mode: LaunchMode.externalApplication);
-      }
+      setState(() {
+        _locating = false;
+        _locateResult = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _locating = false;
+        _locateResult = false;
+      });
+    }
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _locateResult = null);
+    });
+  }
+
+  Future<void> _doRemind() async {
+    if (widget.onRemind == null || _remindLoading) return;
+    setState(() {
+      _remindLoading = true;
+      _remindResult = null;
+    });
+    try {
+      await widget.onRemind!(widget.person);
+      if (!mounted) return;
+      setState(() {
+        _remindLoading = false;
+        _remindResult = true;
+      });
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _remindLoading = false;
+        _remindResult = false;
+      });
+    }
+    Future.delayed(const Duration(seconds: 4), () {
+      if (mounted) setState(() => _remindResult = null);
+    });
+  }
+
+  Future<void> _doRemove() async {
+    if (widget.onRemove == null) return;
+    final name = widget.person['name'] ?? '';
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF2A1F50),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: const Text('Remove person', style: TextStyle(color: Colors.white, fontSize: 16)),
+        content: Text(
+          'Remove $name from your protection?',
+          style: TextStyle(color: Colors.white.withOpacity(0.7), fontSize: 14),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancel', style: TextStyle(color: Colors.white54)),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Remove', style: TextStyle(color: Color(0xFFFF5E5E))),
+          ),
+        ],
+      ),
+    );
+    if (confirmed == true) {
+      await widget.onRemove!(widget.person);
+    }
+  }
+
+  Future<void> _loadHistory() async {
+    final id = widget.person['id'];
+    if (id == null) return;
+    setState(() => _loadingHistory = true);
+    try {
+      final data = await ApiService.fetchCheckinHistory(id);
+      if (!mounted) return;
+      setState(() => _history = data);
     } finally {
-      if (mounted) setState(() => _locating = false);
+      if (mounted) setState(() => _loadingHistory = false);
+    }
+  }
+
+  void _toggleExpanded() {
+    setState(() => _expanded = !_expanded);
+    if (_expanded && !_mapReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _mapReady = true);
+      });
     }
   }
 
@@ -278,12 +369,11 @@ class _PersonCardState extends State<_PersonCard> {
       progress.clamp(0.0, 1.0),
     )!;
 
-    return Material(
-      color: Colors.transparent,
-      child: InkWell(
-        onTap: widget.onTap,
-        borderRadius: BorderRadius.circular(14),
-        child: Container(
+    final lat = double.tryParse(person['latitude']?.toString() ?? '');
+    final lng = double.tryParse(person['longitude']?.toString() ?? '');
+    final mapPoint = _activeMapPoint ?? (lat != null && lng != null ? LatLng(lat, lng) : null);
+
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
@@ -304,52 +394,64 @@ class _PersonCardState extends State<_PersonCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      name.toUpperCase(),
-                      style: const TextStyle(
-                        color: Colors.white,
-                        fontSize: 13,
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              onTap: _toggleExpanded,
+              borderRadius: BorderRadius.circular(10),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          name.toUpperCase(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Last check-in: $lastCheckIn',
+                          style: TextStyle(
+                            color: Colors.white.withOpacity(0.6),
+                            fontSize: 11,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: barColor.withOpacity(0.2),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      status.toUpperCase(),
+                      style: TextStyle(
+                        color: barColor,
+                        fontSize: 10,
                         fontWeight: FontWeight.w600,
                       ),
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      'Last check-in: $lastCheckIn',
-                      style: TextStyle(
-                        color: Colors.white.withOpacity(0.6),
-                        fontSize: 11,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: barColor.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  status.toUpperCase(),
-                  style: TextStyle(
-                    color: barColor,
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
                   ),
-                ),
+                  Icon(
+                    _expanded ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                    size: 18,
+                    color: Colors.white38,
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
           const SizedBox(height: 6),
           Row(
@@ -436,11 +538,10 @@ class _PersonCardState extends State<_PersonCard> {
                 ),
               ),
               const SizedBox(width: 8),
-              if ((widget.person['phone']?.toString() ?? '').isNotEmpty)
+              if (phone.isNotEmpty)
                 Expanded(
                   child: OutlinedButton.icon(
                     onPressed: () async {
-                      final phone = widget.person['phone'].toString();
                       final uri = Uri.parse('tel:$phone');
                       if (await canLaunchUrl(uri)) launchUrl(uri, mode: LaunchMode.externalApplication);
                     },
@@ -454,11 +555,10 @@ class _PersonCardState extends State<_PersonCard> {
                     ),
                   ),
                 ),
-              if ((widget.person['phone']?.toString() ?? '').isNotEmpty)
-                const SizedBox(width: 8),
+              if (phone.isNotEmpty) const SizedBox(width: 8),
               Expanded(
                 child: OutlinedButton.icon(
-                  onPressed: _locating ? null : _openLocation,
+                  onPressed: _locating ? null : _liveLocate,
                   icon: _locating
                       ? const SizedBox(width: 13, height: 13,
                           child: CircularProgressIndicator(strokeWidth: 1.5, color: Color(0xFF9B7FE4)))
@@ -474,6 +574,319 @@ class _PersonCardState extends State<_PersonCard> {
               ),
             ],
           ),
+
+          // ── Locate feedback ──
+          if (_locateResult != null)
+            Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                decoration: BoxDecoration(
+                  color: (_locateResult == true ? const Color(0xFF1E7E34) : const Color(0xFF7E1E1E)).withOpacity(0.18),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: (_locateResult == true ? const Color(0xFF1E7E34) : const Color(0xFFFF5E5E)).withOpacity(0.4)),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(_locateResult == true ? Icons.check_circle_outline : Icons.error_outline,
+                        size: 13, color: _locateResult == true ? const Color(0xFF5BFF6A) : const Color(0xFFFF5E5E)),
+                    const SizedBox(width: 6),
+                    Text(
+                      _locateResult == true ? 'Location request sent' : 'Failed to send location request',
+                      style: TextStyle(color: _locateResult == true ? const Color(0xFF5BFF6A) : const Color(0xFFFF5E5E), fontSize: 12),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+          // ── Expanded detail (in-place, no separate page) ──
+          if (_expanded) ...[
+            const SizedBox(height: 12),
+            Divider(color: Colors.white.withOpacity(0.08), height: 1),
+            const SizedBox(height: 12),
+
+            // Remove / Remind
+            Row(
+              children: [
+                _MiniActionButton(
+                  icon: Icons.close,
+                  label: 'Remove',
+                  color: const Color(0xFFFF5E5E),
+                  onTap: widget.onRemove != null ? _doRemove : null,
+                ),
+                const SizedBox(width: 8),
+                _MiniActionButton(
+                  icon: _remindLoading ? Icons.hourglass_top : Icons.notifications_outlined,
+                  label: 'Remind',
+                  color: const Color(0xFF5BFF6A),
+                  onTap: widget.onRemind != null && !_remindLoading ? _doRemind : null,
+                ),
+              ],
+            ),
+            if (_remindResult != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 8),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                  decoration: BoxDecoration(
+                    color: (_remindResult == true ? const Color(0xFF1E7E34) : const Color(0xFF7E1E1E)).withOpacity(0.18),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(color: (_remindResult == true ? const Color(0xFF1E7E34) : const Color(0xFFFF5E5E)).withOpacity(0.4)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(_remindResult == true ? Icons.check_circle_outline : Icons.error_outline,
+                          size: 13, color: _remindResult == true ? const Color(0xFF5BFF6A) : const Color(0xFFFF5E5E)),
+                      const SizedBox(width: 6),
+                      Text(
+                        _remindResult == true ? 'Reminder sent' : 'Failed to send reminder',
+                        style: TextStyle(color: _remindResult == true ? const Color(0xFF5BFF6A) : const Color(0xFFFF5E5E), fontSize: 12),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+
+            const SizedBox(height: 10),
+
+            // History toggle
+            InkWell(
+              onTap: () async {
+                setState(() => _showHistory = !_showHistory);
+                if (_showHistory && _history.isEmpty) {
+                  await _loadHistory();
+                }
+              },
+              borderRadius: BorderRadius.circular(8),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+                decoration: BoxDecoration(
+                  color: Colors.white.withOpacity(0.04),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.white.withOpacity(0.08)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.history, size: 13, color: Colors.white54),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Check-in history',
+                      style: TextStyle(color: Colors.white.withOpacity(0.6), fontSize: 11),
+                    ),
+                    const Spacer(),
+                    Icon(
+                      _showHistory ? Icons.keyboard_arrow_up : Icons.keyboard_arrow_down,
+                      size: 16,
+                      color: Colors.white38,
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            if (_showHistory) ...[
+              const SizedBox(height: 8),
+              _loadingHistory
+                  ? const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 12),
+                      child: Center(
+                        child: SizedBox(
+                          height: 20, width: 20,
+                          child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white38),
+                        ),
+                      ),
+                    )
+                  : _history.isEmpty
+                      ? Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 8),
+                          child: Text(
+                            'No history available',
+                            style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 12),
+                          ),
+                        )
+                      : SizedBox(
+                          height: 160,
+                          child: ListView.builder(
+                            padding: EdgeInsets.zero,
+                            itemCount: _history.length > 30 ? 30 : _history.length,
+                            itemBuilder: (ctx, idx) {
+                              final entry = _history[idx] as Map<String, dynamic>;
+                              final entryLat = double.tryParse(entry['lat']?.toString() ?? '');
+                              final entryLng = double.tryParse(entry['lng']?.toString() ?? '');
+                              final entryCity = entry['city']?.toString() ?? '';
+                              final entryCountry = entry['country']?.toString() ?? '';
+                              final location = [entryCity, entryCountry]
+                                  .where((v) => v.isNotEmpty)
+                                  .join(', ');
+                              final hasLocation = entryLat != null && entryLng != null;
+                              final isSelected = _selectedHistoryIdx == idx;
+                              final timeStr = entry['checked_in_at']?.toString() ?? '-';
+                              final displayLabel = location.isNotEmpty
+                                  ? '$timeStr  ·  $location'
+                                  : timeStr;
+
+                              return GestureDetector(
+                                onTap: hasLocation
+                                    ? () {
+                                        final point = LatLng(entryLat, entryLng);
+                                        setState(() {
+                                          _selectedHistoryIdx = idx;
+                                          _activeMapPoint = point;
+                                        });
+                                        if (_mapReady) _mapController.move(point, 14);
+                                      }
+                                    : null,
+                                child: Container(
+                                  margin: const EdgeInsets.only(bottom: 5),
+                                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                                  decoration: BoxDecoration(
+                                    color: isSelected
+                                        ? const Color(0xFF7B4FD4).withOpacity(0.18)
+                                        : Colors.white.withOpacity(0.03),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: isSelected
+                                          ? const Color(0xFF7B4FD4).withOpacity(0.5)
+                                          : Colors.white.withOpacity(0.06),
+                                    ),
+                                  ),
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.check_circle_outline,
+                                          size: 13, color: const Color(0xFF5BFF6A).withOpacity(0.7)),
+                                      const SizedBox(width: 8),
+                                      Expanded(
+                                        child: Text(
+                                          displayLabel,
+                                          style: TextStyle(
+                                            color: Colors.white.withOpacity(isSelected ? 0.9 : 0.7),
+                                            fontSize: 12,
+                                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                                          ),
+                                          overflow: TextOverflow.ellipsis,
+                                        ),
+                                      ),
+                                      Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            entry['method']?.toString() ?? '',
+                                            style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 10),
+                                          ),
+                                          if (hasLocation) ...[
+                                            const SizedBox(width: 4),
+                                            Icon(
+                                              Icons.location_on_outlined,
+                                              size: 11,
+                                              color: isSelected
+                                                  ? const Color(0xFF7B4FD4)
+                                                  : Colors.white.withOpacity(0.25),
+                                            ),
+                                          ],
+                                        ],
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+            ],
+
+            const SizedBox(height: 12),
+
+            // Live map
+            ClipRRect(
+              borderRadius: BorderRadius.circular(14),
+              child: mapPoint != null
+                  ? SizedBox(
+                      height: 180,
+                      child: _mapReady
+                          ? FlutterMap(
+                              mapController: _mapController,
+                              options: MapOptions(
+                                initialCenter: mapPoint,
+                                initialZoom: 13,
+                              ),
+                              children: [
+                                TileLayer(
+                                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                  userAgentPackageName: 'com.onclick.lastwish',
+                                ),
+                                MarkerLayer(
+                                  markers: [
+                                    Marker(
+                                      point: mapPoint,
+                                      width: 44,
+                                      height: 56,
+                                      child: Builder(builder: (context) {
+                                        final initials = name
+                                            .toString()
+                                            .trim()
+                                            .split(' ')
+                                            .where((w) => w.isNotEmpty)
+                                            .take(2)
+                                            .map((w) => w[0].toUpperCase())
+                                            .join();
+                                        const pinColor = Color(0xFF7B4FD4);
+                                        return Column(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              width: 38,
+                                              height: 38,
+                                              decoration: BoxDecoration(
+                                                color: pinColor,
+                                                shape: BoxShape.circle,
+                                                border: Border.all(color: Colors.white, width: 2),
+                                                boxShadow: [
+                                                  BoxShadow(
+                                                    color: pinColor.withOpacity(0.5),
+                                                    blurRadius: 8,
+                                                    spreadRadius: 2,
+                                                  ),
+                                                ],
+                                              ),
+                                              child: Center(
+                                                child: Text(
+                                                  initials,
+                                                  style: const TextStyle(
+                                                    color: Colors.white,
+                                                    fontSize: 13,
+                                                    fontWeight: FontWeight.bold,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                            CustomPaint(
+                                              size: const Size(12, 8),
+                                              painter: _TrianglePainter(pinColor),
+                                            ),
+                                          ],
+                                        );
+                                      }),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            )
+                          : const SizedBox.expand(),
+                    )
+                  : Container(
+                      height: 100,
+                      color: Colors.white.withOpacity(0.03),
+                      child: Center(
+                        child: Text(
+                          'No location yet',
+                          style: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 13),
+                        ),
+                      ),
+                    ),
+            ),
+          ],
 
           // ── Medical info (expandable) ──
           if (hasMedical) ...[
@@ -528,9 +941,52 @@ class _PersonCardState extends State<_PersonCard> {
           ],
         ],
       ),
-        ), // Container
-      ), // InkWell
-    ); // Material
+    );
+  }
+}
+
+class _MiniActionButton extends StatelessWidget {
+  final IconData icon;
+  final String label;
+  final Color color;
+  final VoidCallback? onTap;
+
+  const _MiniActionButton({
+    required this.icon,
+    required this.label,
+    required this.color,
+    this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Expanded(
+      child: GestureDetector(
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 9),
+          decoration: BoxDecoration(
+            color: color.withOpacity(0.1),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: color.withOpacity(0.3)),
+          ),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(icon, size: 14, color: color),
+              const SizedBox(width: 5),
+              Flexible(
+                child: Text(
+                  label,
+                  style: TextStyle(color: color, fontSize: 11, fontWeight: FontWeight.w500),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }
 
@@ -584,4 +1040,23 @@ class _MedRow extends StatelessWidget {
           : content,
     );
   }
+}
+
+class _TrianglePainter extends CustomPainter {
+  final Color color;
+  const _TrianglePainter(this.color);
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()..color = color;
+    final path = ui.Path()
+      ..moveTo(0, 0)
+      ..lineTo(size.width, 0)
+      ..lineTo(size.width / 2, size.height)
+      ..close();
+    canvas.drawPath(path, paint);
+  }
+
+  @override
+  bool shouldRepaint(_TrianglePainter old) => old.color != color;
 }

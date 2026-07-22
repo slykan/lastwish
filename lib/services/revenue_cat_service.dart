@@ -45,8 +45,8 @@ class RevenueCatService {
   /// Purchase a package, returns true on success
   static Future<bool> purchase(Package package) async {
     try {
-      final info = await Purchases.purchasePackage(package);
-      final hasPro = info.entitlements.active.containsKey('lastwish Pro');
+      final result = await Purchases.purchase(PurchaseParams.package(package));
+      final hasPro = result.customerInfo.entitlements.active.containsKey('lastwish Pro');
       if (hasPro) {
         // Sync is_pro to backend
         await ApiService.syncProStatus(isPro: true);

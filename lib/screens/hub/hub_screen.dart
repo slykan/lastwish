@@ -15,7 +15,6 @@ import 'package:lastwish/screens/hub/widgets/account_menu.dart';
 import 'package:lastwish/screens/hub/widgets/invites.dart';
 import 'package:lastwish/screens/hub/widgets/invite_dialog.dart';
 import 'package:lastwish/screens/hub/widgets/sent_invites.dart';
-import 'package:lastwish/screens/hub/protected_detail_screen.dart';
 import 'package:lastwish/screens/profile_screen.dart';
 import 'package:lastwish/screens/settings_screen.dart';
 import 'package:lastwish/screens/intervals_screen.dart';
@@ -640,46 +639,36 @@ class _HubScreenState extends State<HubScreen> with WidgetsBindingObserver {
                         const SizedBox(height: 12),
                         PeopleYouProtect(
                           protectedPeople: protectedPeople,
-                          onPersonTap: (_) {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProtectedDetailScreen(
-                                  protectedPeople: protectedPeople,
-                                  onRemind: (person) async {
-                                    final id = person['id'];
-                                    if (id == null) return;
-                                    final ok = await ApiService.remindProtected(id);
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                      content: Text(ok == true ? 'Reminder sent!' : 'Failed to send reminder.'),
-                                      backgroundColor: ok == true ? Colors.green : Colors.red,
-                                      duration: const Duration(seconds: 2),
-                                    ));
-                                  },
-                                  onRemove: (person) async {
-                                    final rid = person['relationship_id'];
-                                    if (rid == null) return;
-                                    final ok = await ApiService.removeProtected(rid);
-                                    if (!context.mounted) return;
-                                    if (ok) _loadData();
-                                  },
-                                  onLocate: (person) async {
-                                    if (!_isPro) {
-                                      ProUpgradeModal.show(context, 'Location request is a PRO feature. Upgrade to unlock.');
-                                      return;
-                                    }
-                                    final id = person['id'];
-                                    if (id == null) return;
-                                    await ApiService.requestLocation(id);
-                                    // Auto-refresh nakon 6s da pokupe novu lokaciju
-                                    Future.delayed(const Duration(seconds: 6), () {
-                                      if (mounted) _loadData();
-                                    });
-                                  },
-                                ),
-                              ),
-                            );
+                          onRemind: (person) async {
+                            final id = person['id'];
+                            if (id == null) return;
+                            final ok = await ApiService.remindProtected(id);
+                            if (!context.mounted) return;
+                            ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+                              content: Text(ok == true ? 'Reminder sent!' : 'Failed to send reminder.'),
+                              backgroundColor: ok == true ? Colors.green : Colors.red,
+                              duration: const Duration(seconds: 2),
+                            ));
+                          },
+                          onRemove: (person) async {
+                            final rid = person['relationship_id'];
+                            if (rid == null) return;
+                            final ok = await ApiService.removeProtected(rid);
+                            if (!context.mounted) return;
+                            if (ok) _loadData();
+                          },
+                          onLocate: (person) async {
+                            if (!_isPro) {
+                              ProUpgradeModal.show(context, 'Location request is a PRO feature. Upgrade to unlock.');
+                              return;
+                            }
+                            final id = person['id'];
+                            if (id == null) return;
+                            await ApiService.requestLocation(id);
+                            // Auto-refresh nakon 6s da pokupe novu lokaciju
+                            Future.delayed(const Duration(seconds: 6), () {
+                              if (mounted) _loadData();
+                            });
                           },
                           onAddProtected: () async {
                             final sent = await showInviteDialog(context, role: 'protected');
@@ -694,46 +683,6 @@ class _HubScreenState extends State<HubScreen> with WidgetsBindingObserver {
                                 duration: const Duration(seconds: 2),
                               ));
                             }
-                          },
-                          onLiveStatus: () {
-                            Navigator.push(
-                              context,
-                              MaterialPageRoute(
-                                builder: (_) => ProtectedDetailScreen(
-                                  protectedPeople: protectedPeople,
-                                  onRemind: (person) async {
-                                    final id = person['id'];
-                                    if (id == null) return;
-                                    final ok = await ApiService.remindProtected(id);
-                                    if (!context.mounted) return;
-                                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(
-                                      content: Text(ok == true ? 'Reminder sent!' : 'Failed to send reminder.'),
-                                      backgroundColor: ok == true ? Colors.green : Colors.red,
-                                      duration: const Duration(seconds: 2),
-                                    ));
-                                  },
-                                  onRemove: (person) async {
-                                    final rid = person['relationship_id'];
-                                    if (rid == null) return;
-                                    final ok = await ApiService.removeProtected(rid);
-                                    if (!context.mounted) return;
-                                    if (ok) _loadData();
-                                  },
-                                  onLocate: (person) async {
-                                    if (!_isPro) {
-                                      ProUpgradeModal.show(context, 'Location request is a PRO feature. Upgrade to unlock.');
-                                      return;
-                                    }
-                                    final id = person['id'];
-                                    if (id == null) return;
-                                    await ApiService.requestLocation(id);
-                                    Future.delayed(const Duration(seconds: 6), () {
-                                      if (mounted) _loadData();
-                                    });
-                                  },
-                                ),
-                              ),
-                            );
                           },
                         ),
                         GuardiansWidget(
