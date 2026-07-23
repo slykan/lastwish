@@ -332,6 +332,15 @@ class _PersonCardState extends State<_PersonCard> {
     }
   }
 
+  void _openFullscreenMap(BuildContext context, String name, LatLng point) {
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        fullscreenDialog: true,
+        builder: (_) => _FullscreenPersonMap(name: name, point: point),
+      ),
+    );
+  }
+
   void _toggleExpanded() {
     setState(() => _expanded = !_expanded);
     if (_expanded && !_mapReady) {
@@ -811,76 +820,44 @@ class _PersonCardState extends State<_PersonCard> {
               child: mapPoint != null
                   ? SizedBox(
                       height: 180,
-                      child: _mapReady
-                          ? FlutterMap(
-                              mapController: _mapController,
-                              options: MapOptions(
-                                initialCenter: mapPoint,
-                                initialZoom: 13,
-                              ),
-                              children: [
-                                TileLayer(
-                                  urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-                                  userAgentPackageName: 'com.onclick.lastwish',
-                                ),
-                                MarkerLayer(
-                                  markers: [
-                                    Marker(
-                                      point: mapPoint,
-                                      width: 44,
-                                      height: 56,
-                                      child: Builder(builder: (context) {
-                                        final initials = name
-                                            .toString()
-                                            .trim()
-                                            .split(' ')
-                                            .where((w) => w.isNotEmpty)
-                                            .take(2)
-                                            .map((w) => w[0].toUpperCase())
-                                            .join();
-                                        const pinColor = Color(0xFF7B4FD4);
-                                        return Column(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Container(
-                                              width: 38,
-                                              height: 38,
-                                              decoration: BoxDecoration(
-                                                color: pinColor,
-                                                shape: BoxShape.circle,
-                                                border: Border.all(color: Colors.white, width: 2),
-                                                boxShadow: [
-                                                  BoxShadow(
-                                                    color: pinColor.withOpacity(0.5),
-                                                    blurRadius: 8,
-                                                    spreadRadius: 2,
-                                                  ),
-                                                ],
-                                              ),
-                                              child: Center(
-                                                child: Text(
-                                                  initials,
-                                                  style: const TextStyle(
-                                                    color: Colors.white,
-                                                    fontSize: 13,
-                                                    fontWeight: FontWeight.bold,
-                                                  ),
-                                                ),
-                                              ),
-                                            ),
-                                            CustomPaint(
-                                              size: const Size(12, 8),
-                                              painter: _TrianglePainter(pinColor),
-                                            ),
-                                          ],
-                                        );
-                                      }),
+                      child: Stack(
+                        children: [
+                          _mapReady
+                              ? FlutterMap(
+                                  mapController: _mapController,
+                                  options: MapOptions(
+                                    initialCenter: mapPoint,
+                                    initialZoom: 13,
+                                  ),
+                                  children: [
+                                    TileLayer(
+                                      urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                                      userAgentPackageName: 'com.onclick.lastwish',
+                                    ),
+                                    MarkerLayer(
+                                      markers: [
+                                        Marker(
+                                          point: mapPoint,
+                                          width: 44,
+                                          height: 56,
+                                          child: _buildPersonMarker(name.toString()),
+                                        ),
+                                      ],
                                     ),
                                   ],
-                                ),
-                              ],
-                            )
-                          : const SizedBox.expand(),
+                                )
+                              : const SizedBox.expand(),
+                          if (_mapReady)
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: _MapIconButton(
+                                icon: Icons.fullscreen,
+                                onTap: () => _openFullscreenMap(context, name.toString(), mapPoint),
+                              ),
+                            ),
+                        ],
+                      ),
                     )
                   : Container(
                       height: 100,
@@ -1045,6 +1022,172 @@ class _MedRow extends StatelessWidget {
               child: content,
             )
           : content,
+    );
+  }
+}
+
+Widget _buildPersonMarker(String name, {double size = 38}) {
+  final initials = name
+      .trim()
+      .split(' ')
+      .where((w) => w.isNotEmpty)
+      .take(2)
+      .map((w) => w[0].toUpperCase())
+      .join();
+  const pinColor = Color(0xFF7B4FD4);
+  return Column(
+    mainAxisSize: MainAxisSize.min,
+    children: [
+      Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: pinColor,
+          shape: BoxShape.circle,
+          border: Border.all(color: Colors.white, width: 2),
+          boxShadow: [
+            BoxShadow(
+              color: pinColor.withOpacity(0.5),
+              blurRadius: 8,
+              spreadRadius: 2,
+            ),
+          ],
+        ),
+        child: Center(
+          child: Text(
+            initials,
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: size * 0.34,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+        ),
+      ),
+      CustomPaint(
+        size: const Size(12, 8),
+        painter: _TrianglePainter(pinColor),
+      ),
+    ],
+  );
+}
+
+class _MapIconButton extends StatelessWidget {
+  final IconData icon;
+  final VoidCallback onTap;
+
+  const _MapIconButton({required this.icon, required this.onTap});
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: Colors.black.withOpacity(0.5),
+      shape: const CircleBorder(),
+      child: InkWell(
+        customBorder: const CircleBorder(),
+        onTap: onTap,
+        child: Padding(
+          padding: const EdgeInsets.all(10),
+          child: Icon(icon, color: Colors.white, size: 20),
+        ),
+      ),
+    );
+  }
+}
+
+class _FullscreenPersonMap extends StatefulWidget {
+  final String name;
+  final LatLng point;
+
+  const _FullscreenPersonMap({required this.name, required this.point});
+
+  @override
+  State<_FullscreenPersonMap> createState() => _FullscreenPersonMapState();
+}
+
+class _FullscreenPersonMapState extends State<_FullscreenPersonMap> {
+  final MapController _mapController = MapController();
+
+  void _zoomBy(double delta) {
+    final camera = _mapController.camera;
+    final newZoom = (camera.zoom + delta).clamp(3.0, 18.0);
+    _mapController.move(camera.center, newZoom);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFF1A1330),
+      body: Stack(
+        children: [
+          FlutterMap(
+            mapController: _mapController,
+            options: MapOptions(
+              initialCenter: widget.point,
+              initialZoom: 15,
+              interactionOptions: const InteractionOptions(
+                flags: InteractiveFlag.all,
+              ),
+            ),
+            children: [
+              TileLayer(
+                urlTemplate: 'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+                userAgentPackageName: 'com.onclick.lastwish',
+              ),
+              MarkerLayer(
+                markers: [
+                  Marker(
+                    point: widget.point,
+                    width: 54,
+                    height: 68,
+                    child: _buildPersonMarker(widget.name, size: 46),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          SafeArea(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  _MapIconButton(
+                    icon: Icons.close,
+                    onTap: () => Navigator.of(context).pop(),
+                  ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.black.withOpacity(0.5),
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      widget.name,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 14,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+          Positioned(
+            right: 16,
+            bottom: 32,
+            child: Column(
+              children: [
+                _MapIconButton(icon: Icons.add, onTap: () => _zoomBy(1)),
+                const SizedBox(height: 10),
+                _MapIconButton(icon: Icons.remove, onTap: () => _zoomBy(-1)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
