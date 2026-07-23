@@ -240,6 +240,11 @@ class _PersonCardState extends State<_PersonCard> {
       _locating = true;
       _locateResult = null;
     });
+    if (!_mapReady) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _mapReady = true);
+      });
+    }
     try {
       await widget.onLocate!(widget.person);
       if (!mounted) return;
