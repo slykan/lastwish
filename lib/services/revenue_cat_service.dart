@@ -9,8 +9,24 @@ class RevenueCatService {
 
   static bool _initialized = false;
 
+  /// RevenueCat's iOS SDK has a known native crash (SIGTRAP in the RC
+  /// backend queue) on iOS/iPadOS 26.x that a Dart try/catch cannot catch
+  /// since it aborts the process directly. Skip configuring the SDK on
+  /// affected versions until RevenueCat ships a fix; Pro features degrade
+  /// gracefully instead of crashing the whole app.
+  static bool get _isUnsupportedIOSVersion {
+    if (!Platform.isIOS) return false;
+    final match = RegExp(r'Version (\d+)').firstMatch(Platform.operatingSystemVersion);
+    final major = match == null ? 0 : int.tryParse(match.group(1)!) ?? 0;
+    return major >= 26;
+  }
+
   static Future<void> init() async {
     if (_initialized) return;
+    if (_isUnsupportedIOSVersion) {
+      debugPrint('RevenueCat disabled: known SDK crash on iOS 26+');
+      return;
+    }
     await Purchases.setLogLevel(kDebugMode ? LogLevel.debug : LogLevel.error);
     final config = PurchasesConfiguration(
       Platform.isIOS ? _iosKey : _androidKey,
