@@ -95,8 +95,18 @@ Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
-  await RevenueCatService.init();
+
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase.initializeApp ERROR: $e');
+  }
+
+  try {
+    await RevenueCatService.init();
+  } catch (e) {
+    debugPrint('RevenueCatService.init ERROR: $e');
+  }
 
   // Setup local notifications channel
   const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
@@ -113,8 +123,12 @@ void main() async {
         enableVibration: true,
       ));
 
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-  await FirebaseMessaging.instance.requestPermission();
+  try {
+    FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    await FirebaseMessaging.instance.requestPermission();
+  } catch (e) {
+    debugPrint('FirebaseMessaging setup ERROR: $e');
+  }
 
   // Foreground FCM handler
   FirebaseMessaging.onMessage.listen((RemoteMessage message) {
