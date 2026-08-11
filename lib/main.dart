@@ -109,19 +109,23 @@ void main() async {
   }
 
   // Setup local notifications channel
-  const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-  await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(android: androidInit));
+  try {
+    const AndroidInitializationSettings androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+    await flutterLocalNotificationsPlugin.initialize(const InitializationSettings(android: androidInit));
 
-  await flutterLocalNotificationsPlugin
-      .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
-      ?.createNotificationChannel(const AndroidNotificationChannel(
-        'ring_channel',
-        'Ring Alerts',
-        description: 'Urgent ring alerts from guardians',
-        importance: Importance.max,
-        playSound: true,
-        enableVibration: true,
-      ));
+    await flutterLocalNotificationsPlugin
+        .resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>()
+        ?.createNotificationChannel(const AndroidNotificationChannel(
+          'ring_channel',
+          'Ring Alerts',
+          description: 'Urgent ring alerts from guardians',
+          importance: Importance.max,
+          playSound: true,
+          enableVibration: true,
+        ));
+  } catch (e) {
+    debugPrint('Local notifications init ERROR: $e');
+  }
 
   try {
     FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);

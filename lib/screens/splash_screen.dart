@@ -20,16 +20,23 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   void checkLogin() async {
+    Widget destination = const LoginScreen();
+    bool disclosureShown = false;
 
-    await Future.delayed(const Duration(seconds: 2));
+    try {
+      await Future.delayed(const Duration(seconds: 2));
 
-    final prefs = await SharedPreferences.getInstance();
-    final token = prefs.getString("token");
-    final disclosureShown = prefs.getBool('bg_location_disclosure_shown') ?? false;
+      final prefs = await SharedPreferences.getInstance()
+          .timeout(const Duration(seconds: 5));
+      final token = prefs.getString("token");
+      disclosureShown = prefs.getBool('bg_location_disclosure_shown') ?? false;
+
+      if (token != null) destination = const HubScreen();
+    } catch (e) {
+      debugPrint('SplashScreen checkLogin ERROR: $e');
+    }
 
     if (!mounted) return;
-
-    final Widget destination = token != null ? const HubScreen() : const LoginScreen();
 
     if (!disclosureShown) {
       Navigator.pushReplacement(
