@@ -37,6 +37,7 @@ class RevenueCatService {
 
   /// Returns true if user has active 'lastwish Pro' entitlement
   static Future<bool> isPro() async {
+    if (!_initialized) return false;
     try {
       final info = await Purchases.getCustomerInfo();
       return info.entitlements.active.containsKey('lastwish Pro');
@@ -48,6 +49,7 @@ class RevenueCatService {
 
   /// Fetch current offering packages
   static Future<List<Package>> getPackages() async {
+    if (!_initialized) return [];
     try {
       final offerings = await Purchases.getOfferings();
       return offerings.current?.availablePackages ?? [];
@@ -59,6 +61,7 @@ class RevenueCatService {
 
   /// Purchase a package, returns true on success
   static Future<bool> purchase(Package package) async {
+    if (!_initialized) return false;
     try {
       final result = await Purchases.purchase(PurchaseParams.package(package));
       final hasPro = result.customerInfo.entitlements.active.containsKey('lastwish Pro');
@@ -79,6 +82,7 @@ class RevenueCatService {
 
   /// Restore purchases (for reinstalls)
   static Future<bool> restore() async {
+    if (!_initialized) return false;
     try {
       final info = await Purchases.restorePurchases();
       final hasPro = info.entitlements.active.containsKey('lastwish Pro');
@@ -92,6 +96,7 @@ class RevenueCatService {
 
   /// Identify user (call after login)
   static Future<void> identify(String userId) async {
+    if (!_initialized) return;
     try {
       await Purchases.logIn(userId);
     } catch (e) {
@@ -101,6 +106,7 @@ class RevenueCatService {
 
   /// Logout (call on app logout)
   static Future<void> logout() async {
+    if (!_initialized) return;
     try {
       await Purchases.logOut();
     } catch (e) {
