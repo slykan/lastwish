@@ -352,7 +352,7 @@ class _HubScreenState extends State<HubScreen> with WidgetsBindingObserver {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
             ),
             onPressed: () => Navigator.of(ctx).pop(true),
-            child: const Text('Allow', style: TextStyle(color: Colors.white)),
+            child: const Text('Continue', style: TextStyle(color: Colors.white)),
           ),
         ],
       ),

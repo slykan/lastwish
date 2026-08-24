@@ -943,7 +943,7 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   description: 'Live Locate uses background location so your selected guardians can request your current location even when LastWish is closed or not visible.',
                   granted: _backgroundGranted,
                   onGrant: _backgroundGranted ? null : _openAppSettings,
-                  buttonLabel: _backgroundGranted ? null : 'Enable',
+                  buttonLabel: _backgroundGranted ? null : 'Continue',
                   isPro: true,
                 ),
                 const SizedBox(height: 32),
@@ -959,7 +959,11 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                 width: double.infinity,
                 height: 52,
                 child: ElevatedButton(
-                  onPressed: () => _nextStep(5),
+                  onPressed: () async {
+                    if (!_notifGranted) await _requestNotifications();
+                    if (!_locationGranted) await _requestLocation();
+                    _nextStep(5);
+                  },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: accentColor,
                     foregroundColor: Colors.white,
@@ -968,11 +972,6 @@ class _OnboardingScreenState extends State<OnboardingScreen>
                   ),
                   child: const Text('Continue', style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15)),
                 ),
-              ),
-              const SizedBox(height: 8),
-              TextButton(
-                onPressed: () => _nextStep(5),
-                child: Text('Skip for now', style: TextStyle(color: Colors.white.withOpacity(0.35), fontSize: 13)),
               ),
             ],
           ),
@@ -1259,7 +1258,7 @@ class _PermissionRow extends StatelessWidget {
                             border: Border.all(color: const Color(0xFF9B7FE4).withOpacity(0.4)),
                           ),
                           child: Text(
-                            buttonLabel ?? 'Allow',
+                            buttonLabel ?? 'Continue',
                             style: const TextStyle(color: Color(0xFF9B7FE4), fontSize: 12, fontWeight: FontWeight.w600),
                           ),
                         ),
