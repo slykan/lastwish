@@ -2,7 +2,7 @@ name: lastwish
 description: "LastWish mobile app"
 publish_to: 'none'
 
-version: 1.0.26+40
+version: 1.0.26+41
 
 environment:
   sdk: ^3.11.1
@@ -55,5 +55,3 @@ flutter_launcher_icons:
   background_color_ios: "#0f172a"
   web:
     generate: false
-
-  sleek_circular_slider: ^2.0.1
